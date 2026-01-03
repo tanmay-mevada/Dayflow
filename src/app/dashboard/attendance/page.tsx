@@ -342,4 +342,4 @@ const AttendancePage = () => {
   );
 };
 
-export default AttendancePage;
+export default EmployeeAttendancePage;
