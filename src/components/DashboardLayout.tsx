@@ -38,7 +38,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Attendance', href: '/dashboard/attendance', icon: Clock },
     { name: 'Leave Requests', href: '/dashboard/leave', icon: Calendar },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
-    { name: 'Payroll', href: '/dashboard/payroll', icon: User },
+    // { name: 'Payroll', href: '/dashboard/payroll', icon: User },
     // Admin only items
     ...(isAdmin ? [
       { name: 'Create Employee', href: '/dashboard/employees/create', icon: Users },
