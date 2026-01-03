@@ -1,251 +1,342 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, 
-  MapPin, 
   CalendarDays, 
   ChevronLeft, 
   ChevronRight, 
   Search, 
-  Filter, 
-  Download,
-  ShieldAlert
+  Filter
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAttendance } from '@/hooks/useAttendance';
+import { useSession } from '@/hooks/useSession';
+import toast from 'react-hot-toast';
 
 const AttendancePage = () => {
-  // --- STATE MANAGEMENT ---
-  const [role, setRole] = useState<'employee' | 'admin'>('employee'); // Toggle for Demo
+  const { role } = useSession();
+  const isAdmin = role === 'admin' || role === 'hr_officer';
+  
+  // Date filtering
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewType, setViewType] = useState<'daily' | 'weekly'>('daily');
+  
+  // Calculate date range based on view type
+  const dateRange = useMemo(() => {
+    if (viewType === 'weekly') {
+      const start = new Date(selectedDate);
+      start.setDate(start.getDate() - start.getDay()); // Start of week (Sunday)
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6); // End of week (Saturday)
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0]
+      };
+    } else {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      return { startDate: dateStr, endDate: dateStr };
+    }
+  }, [viewType, selectedDate]);
+  const { attendance, loading, checkIn, checkOut, refetch } = useAttendance(
+    undefined,
+    dateRange.startDate,
+    dateRange.endDate
+  );
 
-  // --- MOCK DATA: EMPLOYEE (Personal View) ---
-  const myAttendance = [
-    { date: 'Oct 24, 2025', checkIn: '09:00 AM', checkOut: '06:00 PM', hours: '9h 0m', status: 'Present' },
-    { date: 'Oct 23, 2025', checkIn: '09:15 AM', checkOut: '01:30 PM', hours: '4h 15m', status: 'Half-day' },
-    { date: 'Oct 22, 2025', checkIn: '-', checkOut: '-', hours: '0h 0m', status: 'Absent' },
-  ];
+  // Get today's attendance status
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayAttendance = attendance.find(record => {
+    const recordDate = new Date(record.date);
+    recordDate.setHours(0, 0, 0, 0);
+    return recordDate.getTime() === today.getTime();
+  });
 
-  // --- MOCK DATA: ADMIN (All Employees View) ---
-  const allEmployeesAttendance = [
-    { id: 'EMP-001', name: 'John Doe', department: 'Engineering', checkIn: '09:00 AM', checkOut: '06:00 PM', status: 'Present' },
-    { id: 'EMP-002', name: 'Sarah Smith', department: 'HR', checkIn: '09:15 AM', checkOut: '05:45 PM', status: 'Present' },
-    { id: 'EMP-003', name: 'Mike Johnson', department: 'Sales', checkIn: '-', checkOut: '-', status: 'Absent' },
-    { id: 'EMP-004', name: 'Emily Davis', department: 'Marketing', checkIn: '-', checkOut: '-', status: 'Leave' },
-    { id: 'EMP-005', name: 'Robert Brown', department: 'Engineering', checkIn: '10:00 AM', checkOut: '02:00 PM', status: 'Half-day' },
-  ];
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // --- HELPER FUNCTIONS ---
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Present': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Absent': return 'bg-red-100 text-red-700 border-red-200';
-      case 'Half-day': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Leave': return 'bg-blue-100 text-blue-700 border-blue-200';
-      default: return 'bg-slate-100 text-slate-700';
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleCheckIn = async () => {
+    setIsCheckingIn(true);
+    try {
+      await checkIn();
+      await refetch();
+    } catch (error) {
+      // Error is already handled in the hook
+    } finally {
+      setIsCheckingIn(false);
     }
   };
 
+  const handleCheckOut = async () => {
+    setIsCheckingOut(true);
+    try {
+      await checkOut();
+      await refetch();
+    } catch (error) {
+      // Error is already handled in the hook
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  const formatTime = (date: Date | string) => {
+    if (!date) return '-';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatDate = (date: Date | string) => {
+    if (!date) return '-';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatHours = (hours: number) => {
+    if (!hours) return '0h 0m';
+    const h = Math.floor(hours);
+    const m = Math.floor((hours - h) * 60);
+    return `${h}h ${m}m`;
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'absent': return 'Absent';
+      case 'half_day': return 'Half-day';
+      case 'leave': return 'Leave';
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'present': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'absent': return 'bg-red-100 text-red-700 border-red-200';
+      case 'half_day': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'leave': return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    if (viewType === 'weekly') {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    } else {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    }
+    setSelectedDate(newDate);
+  };
+
+  const canCheckIn = !todayAttendance?.checkInTime;
+  const canCheckOut = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
+  const isCheckedIn = !!todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
+
+  // For employee view
+  if (!isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header with Check-in/Check-out Button */}
+          <div className="relative flex flex-col items-center justify-between gap-6 p-8 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200 md:flex-row">
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-slate-900">My Attendance</h2>
+              <p className="mt-1 text-slate-500">Track your daily check-ins and work hours.</p>
+              <div className="flex items-center gap-2 mt-4 text-sm text-slate-500">
+                <Clock className="w-4 h-4" />
+                <span>Current Time: {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+              </div>
+            </div>
+            <div className="relative z-10 flex flex-col items-center gap-4">
+              {canCheckIn ? (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={isCheckingIn}
+                  className="flex flex-col items-center justify-center w-32 h-32 text-white transition-transform rounded-full shadow-xl bg-emerald-600 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <span className="text-2xl font-bold">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {isCheckingIn ? 'Checking In...' : 'Check In'}
+                  </span>
+                </button>
+              ) : canCheckOut ? (
+                <button
+                  onClick={handleCheckOut}
+                  disabled={isCheckingOut}
+                  className="flex flex-col items-center justify-center w-32 h-32 text-white transition-transform bg-blue-600 rounded-full shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <span className="text-2xl font-bold">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {isCheckingOut ? 'Checking Out...' : 'Check Out'}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-32 h-32 rounded-full shadow-xl bg-slate-100 text-slate-600">
+                  <span className="text-2xl font-bold">
+                    {todayAttendance?.checkOutTime 
+                      ? formatTime(todayAttendance.checkOutTime)
+                      : formatTime(currentTime)}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {todayAttendance?.checkOutTime ? 'Checked Out' : 'Checked In'}
+                  </span>
+                </div>
+              )}
+              {todayAttendance?.checkInTime && (
+                <div className="text-sm text-center text-slate-600">
+                  <div>Checked in at: {formatTime(todayAttendance.checkInTime)}</div>
+                  {todayAttendance.checkOutTime && (
+                    <div>Checked out at: {formatTime(todayAttendance.checkOutTime)}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Date Navigation */}
+          <div className="flex items-center justify-between p-4 bg-white border shadow-sm rounded-xl border-slate-200">
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-2 transition-colors rounded-lg hover:bg-slate-100"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-600" />
+            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex p-1 bg-white border rounded-lg border-slate-200">
+                <button
+                  onClick={() => setViewType('daily')}
+                  className={`px-3 py-1 text-xs font-medium rounded ${
+                    viewType === 'daily' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setViewType('weekly')}
+                  className={`px-3 py-1 text-xs font-medium rounded ${
+                    viewType === 'weekly' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
+                  }`}
+                >
+                  Weekly
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-slate-700">
+                <CalendarDays className="w-4 h-4" />
+                <span className="font-medium">
+                  {viewType === 'weekly'
+                    ? `${formatDate(dateRange.startDate)} - ${formatDate(dateRange.endDate)}`
+                    : formatDate(selectedDate)}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigateDate('next')}
+              disabled={viewType === 'daily' && selectedDate.toDateString() >= new Date().toDateString()}
+              className="p-2 transition-colors rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-5 h-5 text-slate-600" />
+            </button>
+          </div>
+
+          {/* Attendance Table */}
+          <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+            <div className="p-4 border-b border-slate-100 bg-slate-50">
+              <h3 className="font-semibold text-slate-700">Attendance Log</h3>
+            </div>
+            {loading ? (
+              <div className="p-12 text-center text-slate-500">Loading attendance records...</div>
+            ) : attendance.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">No attendance records found for this period.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="border-b bg-slate-50 text-slate-500 border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4">Check In</th>
+                      <th className="px-6 py-4">Check Out</th>
+                      <th className="px-6 py-4">Work Hours</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {attendance.map((record, index) => {
+                      const recordDate = new Date(record.date);
+                      recordDate.setHours(0, 0, 0, 0);
+                      const isToday = recordDate.getTime() === today.getTime();
+                      return (
+                        <tr
+                          key={record._id || index}
+                          className={`hover:bg-slate-50 ${isToday ? 'bg-blue-50' : ''}`}
+                        >
+                          <td className="px-6 py-4 font-medium text-slate-900">
+                            {formatDate(record.date)}
+                            {isToday && <span className="ml-2 text-xs text-blue-600">(Today)</span>}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-600">
+                            {formatTime(record.checkInTime)}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-600">
+                            {formatTime(record.checkOutTime)}
+                          </td>
+                          <td className="px-6 py-4 text-slate-600">
+                            {formatHours(record.totalHours || 0)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                                record.status
+                              )}`}
+                            >
+                              {getStatusLabel(record.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Admin view - simplified for now (can be enhanced later)
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* --- DEMO TOGGLE (Remove in Production) --- */}
-        <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-             <ShieldAlert className="h-5 w-5 text-yellow-400" />
-             <span className="text-sm font-medium">Demo Mode: View Page As</span>
-          </div>
-          <div className="flex bg-slate-800 p-1 rounded-md">
-            <button 
-              onClick={() => setRole('employee')}
-              className={`px-3 py-1 text-xs font-bold rounded ${role === 'employee' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              Employee
-            </button>
-            <button 
-              onClick={() => setRole('admin')}
-              className={`px-3 py-1 text-xs font-bold rounded ${role === 'admin' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              Admin / HR
-            </button>
-          </div>
+        <div className="p-8 bg-white border shadow-sm rounded-2xl border-slate-200">
+          <h2 className="mb-2 text-2xl font-bold text-slate-900">Employee Attendance</h2>
+          <p className="text-slate-500">
+            Admin attendance view - This view can be enhanced to show all employees' attendance.
+            For now, you can view individual employee attendance by using the employee view.
+          </p>
         </div>
-
-        {/* =================================================================================
-            VIEW 1: EMPLOYEE INTERFACE (Own Attendance Only) 
-           ================================================================================= */}
-        {role === 'employee' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-               <div className="relative z-10">
-                  <h2 className="text-2xl font-bold text-slate-900">My Attendance</h2>
-                  <p className="text-slate-500 mt-1">Track your daily check-ins and work hours.</p>
-                  <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-                    <Clock className="h-4 w-4" /> Shift: 09:00 AM - 06:00 PM
-                  </div>
-               </div>
-               <div className="relative z-10">
-                 <button className="h-32 w-32 rounded-full bg-emerald-600 text-white shadow-xl flex flex-col items-center justify-center hover:scale-105 transition-transform">
-                    <span className="text-2xl font-bold">09:41</span>
-                    <span className="text-xs font-bold uppercase mt-1">Check Out</span>
-                 </button>
-               </div>
-            </div>
-
-            {/* Personal Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                 <h3 className="font-semibold text-slate-700">Attendance Log</h3>
-                 <div className="flex bg-white border border-slate-200 rounded-lg p-1">
-                    <button onClick={() => setViewType('daily')} className={`px-3 py-1 text-xs font-medium rounded ${viewType === 'daily' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'}`}>Daily</button>
-                    <button onClick={() => setViewType('weekly')} className={`px-3 py-1 text-xs font-medium rounded ${viewType === 'weekly' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'}`}>Weekly</button>
-                 </div>
-              </div>
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Check In</th>
-                    <th className="px-6 py-4">Check Out</th>
-                    <th className="px-6 py-4">Work Hours</th>
-                    <th className="px-6 py-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {myAttendance.map((record, index) => (
-                    <tr key={index} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-slate-900">{record.date}</td>
-                      <td className="px-6 py-4 text-slate-600">{record.checkIn}</td>
-                      <td className="px-6 py-4 text-slate-600">{record.checkOut}</td>
-                      <td className="px-6 py-4 text-slate-600">{record.hours}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-
-        {/* =================================================================================
-            VIEW 2: ADMIN / HR INTERFACE (All Employees) 
-           ================================================================================= */}
-        {role === 'admin' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Admin Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
-               <div>
-                 <h2 className="text-2xl font-bold text-slate-900">Employee Attendance</h2>
-                 <p className="text-slate-500 mt-1">Overview of all employee check-ins for today.</p>
-               </div>
-               <div className="flex gap-2">
-                 <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 text-sm font-medium">
-                    <Download className="h-4 w-4" /> Export Report
-                 </button>
-                 <div className="flex items-center bg-white border border-slate-200 rounded-lg px-3 py-2">
-                    <CalendarDays className="h-4 w-4 text-slate-400 mr-2" />
-                    <span className="text-sm font-medium text-slate-700">Oct 24, 2025</span>
-                 </div>
-               </div>
-            </div>
-
-            {/* Admin Stats Cards */}
-            <div className="grid grid-cols-4 gap-4">
-               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                 <div className="text-slate-500 text-xs font-medium uppercase">Total Employees</div>
-                 <div className="text-2xl font-bold text-slate-900 mt-1">42</div>
-               </div>
-               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                 <div className="text-emerald-600 text-xs font-medium uppercase">Present Today</div>
-                 <div className="text-2xl font-bold text-slate-900 mt-1">38</div>
-               </div>
-               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                 <div className="text-amber-600 text-xs font-medium uppercase">On Leave</div>
-                 <div className="text-2xl font-bold text-slate-900 mt-1">2</div>
-               </div>
-               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                 <div className="text-red-600 text-xs font-medium uppercase">Absent</div>
-                 <div className="text-2xl font-bold text-slate-900 mt-1">2</div>
-               </div>
-            </div>
-
-            {/* Master Attendance Table  */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-               {/* Table Filters */}
-               <div className="p-4 border-b border-slate-100 flex gap-4">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search employee by name or ID..." 
-                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 text-sm">
-                    <Filter className="h-4 w-4" /> Filter Status
-                  </button>
-               </div>
-
-               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4">Employee</th>
-                    <th className="px-6 py-4">Department</th>
-                    <th className="px-6 py-4">Check In</th>
-                    <th className="px-6 py-4">Check Out</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {allEmployeesAttendance.map((record, index) => (
-                    <tr key={index} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                           <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                              {record.name.charAt(0)}
-                           </div>
-                           <div>
-                             <div className="font-medium text-slate-900">{record.name}</div>
-                             <div className="text-xs text-slate-400">{record.id}</div>
-                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">{record.department}</td>
-                      <td className="px-6 py-4 text-slate-600 font-mono">{record.checkIn}</td>
-                      <td className="px-6 py-4 text-slate-600 font-mono">{record.checkOut}</td>
-                      <td className="px-6 py-4">
-                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                         <button className="text-blue-600 hover:text-blue-800 text-xs font-medium">View Details</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-               </table>
-               
-               {/* Pagination */}
-               <div className="p-4 border-t border-slate-100 flex justify-between items-center text-sm text-slate-500">
-                  <span>Showing 1-5 of 42 records</span>
-                  <div className="flex gap-2">
-                     <button className="p-1 hover:bg-slate-100 rounded disabled:opacity-50" disabled><ChevronLeft className="h-4 w-4" /></button>
-                     <button className="p-1 hover:bg-slate-100 rounded"><ChevronRight className="h-4 w-4" /></button>
-                  </div>
-               </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </DashboardLayout>
   );
