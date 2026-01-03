@@ -18,11 +18,12 @@ export function useProfile(employeeId?: string) {
       setLoading(true);
       setError(null);
       const data = await profileApi.getProfile(employeeId);
+      // API returns everything nested under profile
       setProfile(data.profile);
-      setEmergencyContacts(data.emergencyContacts || []);
-      setEducation(data.education || []);
-      setWorkExperience(data.workExperience || []);
-      setSkills(data.skills || []);
+      setEmergencyContacts(data.profile?.emergencyContacts || []);
+      setEducation(data.profile?.education || []);
+      setWorkExperience(data.profile?.workExperience || []);
+      setSkills(data.profile?.skills || []);
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message || 'Failed to fetch profile');

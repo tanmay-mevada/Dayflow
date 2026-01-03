@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Mail, 
@@ -12,46 +12,163 @@ import {
   Save, 
   X,
   Pencil,
-  Download
+  Download,
+  Calendar,
+  Globe,
+  Users as UsersIcon
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useProfile } from '@/hooks/useProfile';
+import toast from 'react-hot-toast';
 
 const ProfilePage = () => {
+  const { profile, loading, updateProfile } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Mock Data mimicking database record
-  const [profile, setProfile] = useState({
-    // Personal Details [Source: 56]
-    fullName: 'John Doe',
-    email: 'john.doe@dayflow.com',
-    phone: '+91 98765 43210',
-    address: 'B-101, Tech Park Avenue, Ahmedabad, Gujarat',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    
-    // Job Details [Source: 57]
-    employeeId: 'EMP-001',
-    department: 'Engineering',
-    designation: 'Senior Frontend Developer',
-    joiningDate: '12th Aug, 2023',
-    manager: 'Sarah Smith',
-
-    // Salary Structure [Source: 61]
-    basicSalary: '₹ 85,000',
-    hra: '₹ 42,500',
-    allowances: '₹ 20,000',
-    
-    // Documents [Source: 62]
-    documents: [
-      { name: 'Offer_Letter.pdf', size: '2.4 MB' },
-      { name: 'Aadhar_Card.pdf', size: '1.1 MB' },
-      { name: 'NDA_Signed.pdf', size: '0.8 MB' },
-    ]
+  // Form state
+  const [formData, setFormData] = useState({
+    phoneNumber: '',
+    address: '',
+    dateOfBirth: '',
+    gender: '',
+    maritalStatus: '',
+    nationality: '',
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Initialize form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        phoneNumber: profile.phoneNumber || '',
+        address: profile.address || '',
+        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : '',
+        gender: profile.gender || '',
+        maritalStatus: profile.maritalStatus || '',
+        nationality: profile.nationality || '',
+      });
+    }
+  }, [profile]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.phoneNumber.trim())) {
+      newErrors.phoneNumber = 'Please enter a valid phone number';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    }
+
+    if (!formData.gender) {
+      newErrors.gender = 'Gender is required';
+    }
+
+    if (!formData.maritalStatus) {
+      newErrors.maritalStatus = 'Marital status is required';
+    }
+
+    if (!formData.nationality.trim()) {
+      newErrors.nationality = 'Nationality is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) {
+      toast.error('Please fill all required fields correctly');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updatePayload: any = {
+        phoneNumber: formData.phoneNumber.trim(),
+        address: formData.address.trim(),
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        maritalStatus: formData.maritalStatus,
+        nationality: formData.nationality.trim(),
+      };
+
+      await updateProfile(updatePayload);
+      setIsEditing(false);
+      setErrors({});
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form data to original profile data
+    if (profile) {
+      setFormData({
+        phoneNumber: profile.phoneNumber || '',
+        address: profile.address || '',
+        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : '',
+        gender: profile.gender || '',
+        maritalStatus: profile.maritalStatus || '',
+        nationality: profile.nationality || '',
+      });
+    }
+    setErrors({});
+    setIsEditing(false);
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-slate-500">Loading profile...</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-red-500">Failed to load profile</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'User';
+  const profilePicture = profile.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}`;
+  const managerName = profile.managerId 
+    ? `${profile.managerId.firstName || ''} ${profile.managerId.lastName || ''}`.trim()
+    : 'Not assigned';
 
   return (
     <DashboardLayout>
@@ -68,16 +185,18 @@ const ProfilePage = () => {
           {isEditing ? (
             <div className="flex gap-3">
               <button 
-                onClick={() => setIsEditing(false)}
-                className="flex items-center gap-2 px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <X className="h-4 w-4" /> Cancel
               </button>
               <button 
-                onClick={() => setIsEditing(false)}
-                className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="h-4 w-4" /> Save Changes
+                <Save className="h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           ) : (
@@ -97,10 +216,10 @@ const ProfilePage = () => {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-600 to-blue-400"></div>
               
-              {/* Avatar Section [Source: 63, 65] */}
+              {/* Avatar Section */}
               <div className="relative inline-block mt-8 mb-4">
                 <img 
-                  src={profile.avatar} 
+                  src={profilePicture} 
                   alt="Profile" 
                   className="h-28 w-28 rounded-full border-4 border-white shadow-md bg-white"
                 />
@@ -111,37 +230,12 @@ const ProfilePage = () => {
                 )}
               </div>
 
-              <h2 className="text-xl font-bold text-slate-900">{profile.fullName}</h2>
-              <p className="text-slate-500 text-sm mb-4">{profile.designation}</p>
+              <h2 className="text-xl font-bold text-slate-900">{fullName}</h2>
+              <p className="text-slate-500 text-sm mb-4">{profile.designation || 'Employee'}</p>
               
               <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 py-2 rounded-lg border border-slate-100">
                 <span>Employee ID:</span>
                 <span className="font-mono text-slate-900">{profile.employeeId}</span>
-              </div>
-            </div>
-
-            {/* Documents Section [Source: 62] */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-600" /> Documents
-              </h3>
-              <div className="space-y-3">
-                {profile.documents.map((doc, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors group">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-red-50 rounded-lg">
-                        <FileText className="h-4 w-4 text-red-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                        <p className="text-xs text-slate-400">{doc.size}</p>
-                      </div>
-                    </div>
-                    <button className="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Download className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -149,7 +243,7 @@ const ProfilePage = () => {
           {/* RIGHT COLUMN: Details Form */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* 1. Personal Details Section [Source: 56] */}
+            {/* 1. Personal Details Section */}
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                 <User className="h-5 w-5 text-blue-600" /> Personal Details
@@ -161,66 +255,204 @@ const ProfilePage = () => {
                   <input 
                     disabled 
                     type="text" 
-                    value={profile.fullName} 
-                    className="w-full rounded-lg bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed" 
+                    value={fullName}
+                    className="w-full rounded-lg bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed px-4 py-2.5 border" 
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <input 
                       disabled 
                       type="email" 
-                      value={profile.email} 
-                      className="pl-10 w-full rounded-lg bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed" 
+                      value={profile.email || ''}
+                      className="pl-10 w-full rounded-lg bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed px-4 py-2.5 border" 
                     />
                   </div>
                 </div>
 
-                {/* Editable Field: Phone [Source: 65] */}
+                {/* Phone Number - Editable */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Phone Number {isEditing && <span className="text-blue-600 text-xs">(Editable)</span>}
+                    Phone Number <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Phone className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <input 
-                      name="phone"
+                      name="phoneNumber"
                       disabled={!isEditing}
                       type="tel" 
-                      value={profile.phone} 
+                      value={formData.phoneNumber} 
                       onChange={handleInputChange}
-                      className={`pl-10 w-full rounded-lg border-slate-200 ${
-                        isEditing ? 'bg-white focus:ring-blue-500 focus:border-blue-500' : 'bg-slate-50 text-slate-500 cursor-not-allowed'
-                      }`} 
+                      className={`pl-10 w-full rounded-lg border px-4 py-2.5 ${
+                        errors.phoneNumber 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : isEditing 
+                            ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                      placeholder="+91 98765 43210"
                     />
                   </div>
+                  {errors.phoneNumber && (
+                    <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
+                  )}
                 </div>
 
-                {/* Editable Field: Address [Source: 65] */}
-                <div className="md:col-span-2">
+                {/* Date of Birth - Editable */}
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Current Address {isEditing && <span className="text-blue-600 text-xs">(Editable)</span>}
+                    Date of Birth <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Calendar className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <input 
+                      name="dateOfBirth"
+                      disabled={!isEditing}
+                      type="date" 
+                      value={formData.dateOfBirth} 
+                      onChange={handleInputChange}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`pl-10 w-full rounded-lg border px-4 py-2.5 ${
+                        errors.dateOfBirth 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : isEditing 
+                            ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                    />
+                  </div>
+                  {errors.dateOfBirth && (
+                    <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>
+                  )}
+                </div>
+
+                {/* Gender - Editable */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Gender <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
+                  </label>
+                  <div className="relative">
+                    <UsersIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <select 
+                      name="gender"
+                      disabled={!isEditing}
+                      value={formData.gender} 
+                      onChange={handleInputChange}
+                      className={`pl-10 w-full rounded-lg border px-4 py-2.5 ${
+                        errors.gender 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : isEditing 
+                            ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  {errors.gender && (
+                    <p className="mt-1 text-sm text-red-600">{errors.gender}</p>
+                  )}
+                </div>
+
+                {/* Marital Status - Editable */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Marital Status <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
+                  </label>
+                  <select 
+                    name="maritalStatus"
+                    disabled={!isEditing}
+                    value={formData.maritalStatus} 
+                    onChange={handleInputChange}
+                    className={`w-full rounded-lg border px-4 py-2.5 ${
+                      errors.maritalStatus 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        : isEditing 
+                          ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                          : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <option value="">Select Marital Status</option>
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="divorced">Divorced</option>
+                    <option value="widowed">Widowed</option>
+                  </select>
+                  {errors.maritalStatus && (
+                    <p className="mt-1 text-sm text-red-600">{errors.maritalStatus}</p>
+                  )}
+                </div>
+
+                {/* Nationality - Editable */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Nationality <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <input 
+                      name="nationality"
+                      disabled={!isEditing}
+                      type="text" 
+                      value={formData.nationality} 
+                      onChange={handleInputChange}
+                      className={`pl-10 w-full rounded-lg border px-4 py-2.5 ${
+                        errors.nationality 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : isEditing 
+                            ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                      placeholder="e.g., Indian, American"
+                    />
+                  </div>
+                  {errors.nationality && (
+                    <p className="mt-1 text-sm text-red-600">{errors.nationality}</p>
+                  )}
+                </div>
+
+                {/* Address - Editable */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Current Address <span className="text-red-500">*</span>
+                    {isEditing && <span className="text-blue-600 text-xs ml-2">(Editable)</span>}
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <textarea 
                       name="address"
                       disabled={!isEditing}
-                      rows={2}
-                      value={profile.address}
+                      rows={3}
+                      value={formData.address}
                       onChange={handleInputChange}
-                      className={`pl-10 w-full rounded-lg border-slate-200 ${
-                        isEditing ? 'bg-white focus:ring-blue-500 focus:border-blue-500' : 'bg-slate-50 text-slate-500 cursor-not-allowed'
-                      }`} 
+                      className={`pl-10 w-full rounded-lg border px-4 py-2.5 resize-none ${
+                        errors.address 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : isEditing 
+                            ? 'bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                      placeholder="Enter your complete address"
                     />
                   </div>
+                  {errors.address && (
+                    <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 2. Job Details Section [Source: 57] */}
+            {/* 2. Job Details Section */}
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-purple-600" /> Job Information
@@ -228,62 +460,39 @@ const ProfilePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Department</label>
-                  <div className="text-slate-900 font-medium">{profile.department}</div>
+                  <div className="text-slate-900 font-medium">{profile.department || 'Not assigned'}</div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Manager</label>
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600">SM</div>
-                    <span className="text-slate-900 font-medium">{profile.manager}</span>
+                    <div className="h-6 w-6 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600">
+                      {managerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="text-slate-900 font-medium">{managerName}</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Date of Joining</label>
-                  <div className="text-slate-900 font-medium">{profile.joiningDate}</div>
+                  <div className="text-slate-900 font-medium">
+                    {profile.dateOfJoining 
+                      ? new Date(profile.dateOfJoining).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : 'Not available'}
+                  </div>
                 </div>
                 <div>
                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Employment Status</label>
-                   <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
-                     Active Full-Time
+                   <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                     profile.employmentStatus === 'active' 
+                       ? 'bg-emerald-100 text-emerald-700'
+                       : profile.employmentStatus === 'inactive'
+                       ? 'bg-yellow-100 text-yellow-700'
+                       : 'bg-red-100 text-red-700'
+                   }`}>
+                     {profile.employmentStatus ? profile.employmentStatus.charAt(0).toUpperCase() + profile.employmentStatus.slice(1) : 'Active'}
                    </span>
                 </div>
               </div>
             </div>
-
-             {/* 3. Salary Structure [Source: 61] */}
-             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                {/* Decorative background pattern */}
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-emerald-50 rounded-full blur-xl opacity-50"></div>
-                
-                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <span className="text-emerald-600 font-serif font-black text-xl">₹</span> Salary Structure
-                </h3>
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                    <span className="text-slate-600">Basic Salary</span>
-                    <span className="font-mono font-medium text-slate-900">{profile.basicSalary}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                    <span className="text-slate-600">HRA (House Rent Allowance)</span>
-                    <span className="font-mono font-medium text-slate-900">{profile.hra}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                    <span className="text-slate-600">Special Allowances</span>
-                    <span className="font-mono font-medium text-slate-900">{profile.allowances}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-slate-900 font-bold">Gross Salary (Monthly)</span>
-                    <span className="font-mono font-bold text-emerald-600 text-lg">₹ 1,47,500</span>
-                  </div>
-                </div>
-                
-                <div className="mt-6 bg-slate-50 p-4 rounded-lg text-xs text-slate-500 flex items-start gap-2">
-                  <div className="mt-0.5 min-w-[16px]"><FileText className="h-4 w-4" /></div>
-                  Confidential: This information is visible only to you and the HR Admin.
-                </div>
-             </div>
-
           </div>
         </div>
       </div>
