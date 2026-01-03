@@ -31,12 +31,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
-src/app/api/
-src/app/auth/
-src/lib/
-src/models/
-src/utils/
+.env
 
 # vercel
 .vercel
