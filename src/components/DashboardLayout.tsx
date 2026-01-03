@@ -3,7 +3,15 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Clock, 
+  Calendar, 
+  User, 
+  LogOut, 
+  Users, 
+  BarChart3 // <--- 1. Import BarChart3 icon
+} from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import toast from 'react-hot-toast';
 
@@ -33,12 +41,21 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   const isAdmin = role === 'admin' || role === 'hr_officer';
 
+  // --- NAVIGATION ITEMS ---
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Clock },
     { name: 'Leave Requests', href: '/dashboard/leave', icon: Calendar },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
-    // { name: 'Payroll', href: '/dashboard/payroll', icon: User },
+    { name: 'Payroll', href: '/dashboard/payroll', icon: User },
+
+    
+    // --- 2. NEW ANALYTICS OPTION ADDED HERE ---
+    ...(isAdmin ? [
+      { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    ] : []),
+    // ------------------------------------------
+
     // Admin only items
     ...(isAdmin ? [
       { name: 'Create Employee', href: '/dashboard/employees/create', icon: Users },

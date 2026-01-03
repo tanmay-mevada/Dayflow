@@ -65,16 +65,7 @@ const PayrollPage = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* --- DEMO TOGGLE --- */}
-        <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-             <ShieldAlert className="h-5 w-5 text-yellow-400" />
-             <span className="text-sm font-medium">Demo Mode: View Page As</span>
-          </div>
-          <div className="flex bg-slate-800 p-1 rounded-md">
-            <button onClick={() => setRole('employee')} className={`px-3 py-1 text-xs font-bold rounded ${role === 'employee' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Employee</button>
-            <button onClick={() => setRole('admin')} className={`px-3 py-1 text-xs font-bold rounded ${role === 'admin' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Admin / HR</button>
-          </div>
-        </div>
+       
 
         {/* =================================================================================
             VIEW 1: EMPLOYEE (Read-Only Salary Slip) [Source: 96]
