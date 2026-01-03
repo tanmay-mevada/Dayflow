@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/getSession';
 import { User } from '@/models/user';
 import { generateLoginId, generatePassword } from '@/lib/generateLoginId';
 import bcrypt from 'bcryptjs';
-import { sendOtpEmail } from '@/utils/sendOtpEmail';
+import { sendWelcomeEmail } from '@/utils/sendWelcomeEmail';
 
 export async function POST(req: Request) {
   try {
@@ -96,22 +96,32 @@ export async function POST(req: Request) {
     // Create user
     const newUser = await User.create(userData);
 
-    // Send email with login credentials
-    // You can create a utility function to send credentials email
-    // For now, we'll return the credentials (in production, send via email)
+    // Send welcome email with login credentials
+    try {
+      await sendWelcomeEmail(
+        email,
+        firstName,
+        loginId,
+        autoPassword,
+        employeeId,
+        companyName
+      );
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Continue even if email fails - user is still created
+    }
 
     return NextResponse.json({ 
-      message: 'Employee created successfully',
+      message: 'Employee created successfully. Welcome email sent.',
       employee: {
         id: newUser._id,
         loginId: newUser.loginId,
         email: newUser.email,
         employeeId: newUser.employeeId,
-        password: autoPassword, // Only return on creation, never again
         firstName: newUser.firstName,
         lastName: newUser.lastName,
       },
-      note: 'Please save these credentials securely. The password should be shared with the employee.'
+      note: 'Welcome email with login credentials has been sent to the employee.'
     });
   } catch (err: any) {
     console.error('Create employee error:', err);

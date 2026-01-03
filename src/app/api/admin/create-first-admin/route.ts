@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import { User } from '@/models/user';
 import { generateLoginId, generatePassword } from '@/lib/generateLoginId';
 import bcrypt from 'bcryptjs';
+import { sendWelcomeEmail } from '@/utils/sendWelcomeEmail';
 
 /**
  * One-time route to create the first admin user
@@ -88,8 +89,23 @@ export async function POST(req: Request) {
       isPasswordChanged: true, // Since they set their own password
     });
 
+    // Send welcome email with login credentials
+    try {
+      await sendWelcomeEmail(
+        email,
+        firstName,
+        loginId,
+        password,
+        employeeId,
+        companyName
+      );
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Continue even if email fails - admin is still created
+    }
+
     return NextResponse.json({ 
-      message: 'First admin user created successfully!',
+      message: 'First admin user created successfully! Welcome email sent.',
       admin: {
         id: adminUser._id,
         loginId: adminUser.loginId,

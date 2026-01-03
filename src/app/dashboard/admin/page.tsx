@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { 
   Search, 
   Plus, 
-  Plane
+  Plane,
+  Mail
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import toast from 'react-hot-toast';
@@ -116,12 +117,22 @@ const AdminDashboard = () => {
         {/* --- Action Bar (New Button & Search) --- */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
            
-           {/* "NEW" Button - Purple as requested */}
-           <Link href="/dashboard/employees/create">
-             <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors shadow-md shadow-purple-200 font-medium text-sm uppercase tracking-wide">
-                <Plus className="h-4 w-4" /> New
-             </button>
-           </Link>
+           {/* Action Buttons */}
+           <div className="flex items-center gap-3">
+             {/* "NEW" Button - Purple as requested */}
+             <Link href="/dashboard/employees/create">
+               <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors shadow-md shadow-purple-200 font-medium text-sm uppercase tracking-wide">
+                  <Plus className="h-4 w-4" /> New
+               </button>
+             </Link>
+             
+             {/* Send Notification Button */}
+             <Link href="/dashboard/admin/notifications">
+               <button className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200 font-medium text-sm">
+                 <Mail className="h-4 w-4" /> Send Notification
+               </button>
+             </Link>
+           </div>
 
            {/* Search Bar */}
            <div className="relative w-full md:w-96">

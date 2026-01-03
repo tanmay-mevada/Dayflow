@@ -51,11 +51,7 @@ export default function CreateEmployeePage() {
         return;
       }
 
-      toast.success('Employee created successfully!');
-      
-      // Show credentials (in production, send via email)
-      const credentials = `Login ID: ${data.employee.loginId}\nPassword: ${data.employee.password}`;
-      alert(`Employee created!\n\n${credentials}\n\nPlease save these credentials securely.`);
+      toast.success(data.message || 'Employee created successfully! Welcome email sent to the employee.');
       
       // Reset form
       setFormData({
