@@ -4,264 +4,352 @@ import React, { useState } from 'react';
 import { 
   Plus, 
   Calendar, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  ShieldAlert, 
-  FileText, 
-  User,
-  Filter,
-  Check,
-  X
+  X, 
+  Upload,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+// Import your custom hooks
+import { useLeave, useLeaveBalance } from '@/hooks/useLeave'; 
 
-const LeavePage = () => {
-  // --- STATE MANAGEMENT ---
-  const [role, setRole] = useState<'employee' | 'admin'>('employee'); // Demo Toggle
+const EmployeeLeavePage = () => {
+  // --- HOOKS INTEGRATION ---
+  const { leaves, loading: leavesLoading, createLeave } = useLeave();
+  const { balance, loading: balanceLoading } = useLeaveBalance();
 
-  // --- MOCK DATA: EMPLOYEE (My History) ---
-  const [myRequests, setMyRequests] = useState([
-    { id: 1, type: 'Sick Leave', from: '2025-10-10', to: '2025-10-11', days: 2, status: 'Pending', remarks: 'High fever' },
-    { id: 2, type: 'Paid Leave', from: '2025-09-15', to: '2025-09-20', days: 5, status: 'Approved', remarks: 'Family vacation' },
-    { id: 3, type: 'Unpaid Leave', from: '2025-08-01', to: '2025-08-01', days: 1, status: 'Rejected', remarks: 'Personal work' },
-  ]);
+  // --- STATE ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- MOCK DATA: ADMIN (Incoming Requests) ---
-  const [incomingRequests, setIncomingRequests] = useState([
-    { id: 101, employee: 'Sarah Smith', dept: 'Design', type: 'Sick Leave', from: '2025-10-24', to: '2025-10-25', days: 2, status: 'Pending', reason: 'Viral infection' },
-    { id: 102, employee: 'Mike Johnson', dept: 'Sales', type: 'Paid Leave', from: '2025-11-01', to: '2025-11-05', days: 5, status: 'Pending', reason: 'Diwali break' },
-    { id: 103, employee: 'Emily Davis', dept: 'Marketing', type: 'Unpaid Leave', from: '2025-10-28', to: '2025-10-28', days: 1, status: 'Pending', reason: 'Urgent personal work' },
-  ]);
+  // --- FORM STATE ---
+  const [formData, setFormData] = useState({
+    leaveType: 'paid_leave',
+    startDate: '',
+    endDate: '',
+    reason: '',
+  });
 
-  // --- HANDLERS ---
-  const handleAdminAction = (id: number, action: 'Approved' | 'Rejected') => {
-    // In a real app, this would make an API call. Here we update local state[cite: 93].
-    setIncomingRequests(prev => prev.map(req => 
-      req.id === id ? { ...req, status: action } : req
-    ));
+  // --- HANDLER: Input Change ---
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // --- HELPER: Formatting & Calculation ---
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Approved': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Rejected': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-amber-100 text-amber-700 border-amber-200';
+    switch(status) {
+      case 'approved': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+      case 'rejected': return 'text-red-600 bg-red-50 border-red-100';
+      default: return 'text-amber-600 bg-amber-50 border-amber-100';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-GB');
+  };
+
+  const calculateDays = () => {
+    if (!formData.startDate || !formData.endDate) return 0;
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const diffTime = end.getTime() - start.getTime(); // Allow negative to check validity
+    if (diffTime < 0) return 0;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
+    return diffDays;
+  };
+
+  // --- HANDLER: Submit Request (FIXED LOGIC) ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 1. Calculate requested duration
+    const requestedDays = calculateDays();
+    if (requestedDays <= 0) {
+        alert("End date cannot be before start date.");
+        return;
+    }
+
+    // 2. Client-Side Balance Check (PREVENTS THE ERROR)
+    // We check if balance data exists, and if the leave type is NOT unpaid
+    if (balance && formData.leaveType !== 'unpaid_leave') {
+        const currentBalance = balance[formData.leaveType] || 0;
+        
+        if (requestedDays > currentBalance) {
+            alert(`Insufficient Balance! You requested ${requestedDays} days, but only have ${currentBalance} days available.`);
+            return; // Stop execution here, don't call API
+        }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createLeave({
+        leaveType: formData.leaveType,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        reason: formData.reason,
+      });
+      
+      // Success: Close modal & Reset form
+      setIsModalOpen(false);
+      setFormData({
+        leaveType: 'paid_leave',
+        startDate: '',
+        endDate: '',
+        reason: ''
+      });
+      
+    } catch (error: any) {
+      // Error is caught here so it doesn't crash the runtime
+      // The hook handles the Toast, but we can log a friendly warning
+      console.warn("Server rejected leave request:", error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* --- DEMO TOGGLE --- */}
-        <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-             <ShieldAlert className="h-5 w-5 text-yellow-400" />
-             <span className="text-sm font-medium">Demo Mode: View Page As</span>
-          </div>
-          <div className="flex bg-slate-800 p-1 rounded-md">
-            <button onClick={() => setRole('employee')} className={`px-3 py-1 text-xs font-bold rounded ${role === 'employee' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Employee</button>
-            <button onClick={() => setRole('admin')} className={`px-3 py-1 text-xs font-bold rounded ${role === 'admin' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Admin / HR</button>
-          </div>
+        {/* --- Header & Controls --- */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-200 pb-4">
+           <div className="space-y-4">
+              <h1 className="text-2xl font-bold text-slate-900">My Time Off</h1>
+              <div className="bg-slate-100 p-1 rounded-lg w-fit">
+                 <button className="px-4 py-1.5 text-sm font-medium bg-white text-slate-900 shadow-sm rounded-md">Time Off</button>
+              </div>
+           </div>
+
+           <div className="flex gap-3">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 shadow-sm shadow-purple-200 transition-all"
+              >
+                 <Plus className="h-4 w-4" /> NEW
+              </button>
+           </div>
         </div>
 
-        {/* =================================================================================
-            VIEW 1: EMPLOYEE (Apply & View History)
-           ================================================================================= */}
-        {role === 'employee' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
-            
-            {/* LEFT: Application Form [cite: 78, 80] */}
-            <div className="lg:col-span-1">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-24">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="p-2 bg-blue-50 rounded-lg"><Plus className="h-5 w-5 text-blue-600" /></div>
-                   <h2 className="text-lg font-bold text-slate-900">New Request</h2>
-                </div>
-                
-                <form className="space-y-4">
-                  {/* Leave Type  */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Leave Type</label>
-                    <select className="w-full rounded-lg border-slate-200 text-sm focus:ring-blue-500 focus:border-blue-500">
-                      <option>Paid Leave</option>
-                      <option>Sick Leave</option>
-                      <option>Unpaid Leave</option>
-                    </select>
-                  </div>
-
-                  {/* Date Range [cite: 82] */}
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">From</label>
-                        <input type="date" className="w-full rounded-lg border-slate-200 text-sm" />
-                     </div>
-                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
-                        <input type="date" className="w-full rounded-lg border-slate-200 text-sm" />
-                     </div>
-                  </div>
-
-                  {/* Remarks [cite: 83] */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Reason / Remarks</label>
-                    <textarea rows={3} className="w-full rounded-lg border-slate-200 text-sm" placeholder="Brief reason for leave..."></textarea>
-                  </div>
-
-                  <button className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm">
-                    Submit Request
-                  </button>
-                </form>
+        {/* --- Balance Cards --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           {/* Paid Time Off Card */}
+           <div className="bg-slate-900 text-white p-6 rounded-2xl relative overflow-hidden shadow-lg">
+              <div className="relative z-10">
+                 <h3 className="text-blue-400 font-bold text-sm uppercase tracking-wider mb-1">Paid Time Off</h3>
+                 <div className="text-3xl font-bold mb-1">
+                    {balanceLoading ? (
+                      <span className="text-sm">...</span>
+                    ) : (
+                      balance?.paid_leave || 0
+                    )} 
+                    <span className="text-lg font-normal text-slate-400"> / Days Available</span>
+                 </div>
+                 <p className="text-xs text-slate-500">Plan your vacation ahead.</p>
               </div>
-            </div>
-
-            {/* RIGHT: My Leave History */}
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Balance Cards */}
-              <div className="grid grid-cols-3 gap-4">
-                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider">Paid Leave</div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">12 <span className="text-sm font-normal text-slate-400">/ 20</span></div>
-                 </div>
-                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider">Sick Leave</div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">5 <span className="text-sm font-normal text-slate-400">/ 10</span></div>
-                 </div>
-                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider">Unpaid</div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">0</div>
-                 </div>
+              <div className="absolute right-0 bottom-0 p-4 opacity-10">
+                 <Calendar className="h-24 w-24 text-blue-400" />
               </div>
+           </div>
 
-              {/* History Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 font-semibold text-slate-900">My Leave History</div>
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500">
+           {/* Sick Time Off Card */}
+           <div className="bg-white border border-slate-200 p-6 rounded-2xl relative overflow-hidden shadow-sm">
+              <div className="relative z-10">
+                 <h3 className="text-blue-600 font-bold text-sm uppercase tracking-wider mb-1">Sick Time Off</h3>
+                 <div className="text-3xl font-bold text-slate-900 mb-1">
+                    {balanceLoading ? (
+                      <span className="text-sm">...</span>
+                    ) : (
+                      balance?.sick_leave || 0
+                    )} 
+                    <span className="text-lg font-normal text-slate-400"> / Days Available</span>
+                 </div>
+                 <p className="text-xs text-slate-500">Get well soon.</p>
+              </div>
+              <div className="absolute right-0 bottom-0 p-4 opacity-5">
+                 <AlertCircle className="h-24 w-24 text-blue-600" />
+              </div>
+           </div>
+        </div>
+
+        {/* --- Requests Table --- */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+           <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                 <tr>
+                    <th className="px-6 py-4">Start Date</th>
+                    <th className="px-6 py-4">End Date</th>
+                    <th className="px-6 py-4">Days</th>
+                    <th className="px-6 py-4">Time Off Type</th>
+                    <th className="px-6 py-4">Status</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                 {leavesLoading ? (
                     <tr>
-                      <th className="px-6 py-3 font-medium">Type</th>
-                      <th className="px-6 py-3 font-medium">Date Range</th>
-                      <th className="px-6 py-3 font-medium">Days</th>
-                      <th className="px-6 py-3 font-medium">Status</th>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        Loading records...
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {myRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 font-medium text-slate-900">{req.type}</td>
-                        <td className="px-6 py-4 text-slate-500">{req.from} to {req.to}</td>
-                        <td className="px-6 py-4 text-slate-500">{req.days}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(req.status)}`}>
-                            {req.status}
+                 ) : leaves && leaves.length > 0 ? (
+                   leaves.map((req) => (
+                    <tr key={req._id || req.id} className="hover:bg-slate-50 transition-colors">
+                       <td className="px-6 py-4 font-mono text-slate-600">{formatDate(req.startDate)}</td>
+                       <td className="px-6 py-4 font-mono text-slate-600">{formatDate(req.endDate)}</td>
+                       <td className="px-6 py-4 font-medium text-slate-900">{req.totalDays}</td>
+                       <td className="px-6 py-4 text-blue-600 font-medium capitalize">
+                         {req.leaveType.replace('_', ' ')}
+                       </td>
+                       <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${getStatusColor(req.status)}`}>
+                             {req.status}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =================================================================================
-            VIEW 2: ADMIN (Approval Workflow) [cite: 88]
-           ================================================================================= */}
-        {role === 'admin' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-               <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Leave Requests</h2>
-                  <p className="text-slate-500 mt-1">Manage and approve employee time-off requests.</p>
-               </div>
-               <div className="flex gap-2">
-                 <button className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
-                   <Filter className="h-4 w-4" /> Filter Status
-                 </button>
-               </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Employee</th>
-                    <th className="px-6 py-4 font-medium">Leave Details</th>
-                    <th className="px-6 py-4 font-medium">Dates</th>
-                    <th className="px-6 py-4 font-medium">Reason</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    <th className="px-6 py-4 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {incomingRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                           <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-                              {req.employee.charAt(0)}
-                           </div>
-                           <div>
-                             <div className="font-medium text-slate-900">{req.employee}</div>
-                             <div className="text-xs text-slate-400">{req.dept}</div>
-                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                         <span className="font-medium text-slate-900">{req.type}</span>
-                         <div className="text-xs text-slate-500">{req.days} Day(s)</div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">
-                        {req.from} <br/> to {req.to}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 max-w-xs truncate" title={req.reason}>
-                        {req.reason}
-                      </td>
-                      <td className="px-6 py-4">
-                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(req.status)}`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                         {/* Action Buttons [cite: 91] */}
-                         {req.status === 'Pending' ? (
-                           <div className="flex items-center justify-end gap-2">
-                             <button 
-                               onClick={() => handleAdminAction(req.id, 'Approved')}
-                               className="p-1.5 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors" 
-                               title="Approve"
-                             >
-                               <Check className="h-4 w-4" />
-                             </button>
-                             <button 
-                               onClick={() => handleAdminAction(req.id, 'Rejected')}
-                               className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors" 
-                               title="Reject"
-                             >
-                               <X className="h-4 w-4" />
-                             </button>
-                           </div>
-                         ) : (
-                           <span className="text-xs text-slate-400 font-medium italic">Action Taken</span>
-                         )}
+                       </td>
+                    </tr>
+                   ))
+                 ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                        You haven't applied for any leave yet.
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {incomingRequests.length === 0 && (
-                <div className="p-8 text-center text-slate-400">No pending leave requests.</div>
-              )}
-            </div>
-          </div>
-        )}
+                 )}
+              </tbody>
+           </table>
+        </div>
 
       </div>
+
+      {/* --- MODAL: Time Off Request --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 text-slate-200 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-700 animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-700">
+              <h2 className="text-xl font-bold text-white">Time off Type Request</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                className="text-slate-400 hover:text-white transition-colors"
+                disabled={isSubmitting}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+               
+               {/* Time Off Type */}
+               <div className="grid grid-cols-3 items-center gap-4">
+                  <label className="text-sm font-medium text-slate-400">Time off Type</label>
+                  <select 
+                    name="leaveType"
+                    value={formData.leaveType}
+                    onChange={handleInputChange}
+                    className="col-span-2 bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  >
+                     <option value="paid_leave">Paid Time Off</option>
+                     <option value="sick_leave">Sick Leave</option>
+                     <option value="unpaid_leave">Unpaid Leave</option>
+                  </select>
+               </div>
+
+               {/* Validity Period */}
+               <div className="grid grid-cols-3 items-center gap-4">
+                  <label className="text-sm font-medium text-slate-400">Validity Period</label>
+                  <div className="col-span-2 flex gap-2 items-center">
+                     <input 
+                       type="date" 
+                       name="startDate"
+                       value={formData.startDate}
+                       onChange={handleInputChange}
+                       required
+                       className="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg block w-full p-2" 
+                     />
+                     <span className="text-slate-500 text-xs">To</span>
+                     <input 
+                       type="date" 
+                       name="endDate"
+                       value={formData.endDate}
+                       onChange={handleInputChange}
+                       required
+                       className="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg block w-full p-2" 
+                     />
+                  </div>
+               </div>
+
+               {/* Duration (Days Calculated) */}
+               <div className="grid grid-cols-3 items-center gap-4">
+                  <label className="text-sm font-medium text-slate-400">Duration</label>
+                  <div className="col-span-2 flex items-center gap-2">
+                     <div className="bg-slate-800 border border-slate-600 text-blue-400 text-sm font-bold rounded-lg block w-24 p-2 text-center">
+                        {calculateDays()}
+                     </div>
+                     <span className="text-slate-500 text-sm">Days</span>
+                  </div>
+               </div>
+
+               {/* Reason */}
+               <div className="grid grid-cols-3 items-start gap-4">
+                  <label className="text-sm font-medium text-slate-400 pt-2">Reason</label>
+                  <div className="col-span-2">
+                     <textarea
+                       name="reason"
+                       value={formData.reason}
+                       onChange={handleInputChange}
+                       required
+                       placeholder="Please provide a reason..."
+                       rows={2}
+                       className="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                     />
+                  </div>
+               </div>
+
+               {/* Attachment */}
+               <div className="grid grid-cols-3 items-start gap-4">
+                  <label className="text-sm font-medium text-slate-400 pt-2">Attachment:</label>
+                  <div className="col-span-2">
+                     <label className="flex items-center justify-center w-full p-2 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-slate-500 hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center gap-2 text-slate-400">
+                           <Upload className="h-4 w-4" />
+                           <span className="text-xs">(Optional)</span>
+                        </div>
+                        <input type="file" className="hidden" />
+                     </label>
+                  </div>
+               </div>
+
+               {/* Modal Footer */}
+               <div className="flex gap-3 pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                     {isSubmitting && <Loader2 className="h-3 w-3 animate-spin" />}
+                     {isSubmitting ? 'Submitting...' : 'Submit'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsModalOpen(false)} 
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                     Discard
+                  </button>
+               </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 };
 
-export default LeavePage;
+export default EmployeeLeavePage;
