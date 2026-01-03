@@ -10,7 +10,8 @@ import {
   User, 
   LogOut, 
   Users, 
-  BarChart3 // <--- 1. Import BarChart3 icon
+  BarChart3,
+  Banknote
 } from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import toast from 'react-hot-toast';
@@ -47,7 +48,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Attendance', href: '/dashboard/attendance', icon: Clock },
     { name: 'Leave Requests', href: '/dashboard/leave', icon: Calendar },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
-    { name: 'Payroll', href: '/dashboard/payroll', icon: User },
+    { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote },
 
     
     // --- 2. NEW ANALYTICS OPTION ADDED HERE ---
