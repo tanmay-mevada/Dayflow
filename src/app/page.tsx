@@ -10,6 +10,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+//homepage component
 const HomePage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-800 font-sans">
