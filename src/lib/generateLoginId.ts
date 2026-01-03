@@ -2,9 +2,9 @@ import connectDB from './db';
 import { User } from '@/models/user';
 
 /**
- * Generate Login ID in format: LOI (First 2 letters of company) (First 2 letters of first name + last name) (year) (serial number)
+ * Generate Login ID in format: (First 2 letters of company) (First 2 letters of first name + last name) (year) (serial number)
  * Example: OIJODO20220001
- * - OI = Odoo India (Company Name)
+ * - OI = Odoo India (Company Name - first 2 letters)
  * - JODO = First two letters of first name and last name
  * - 2022 = Year of Joining
  * - 0001 = Serial Number of Joining for that Year
@@ -58,8 +58,8 @@ export async function generateLoginId(
   // Format serial number with leading zeros (4 digits)
   let serialStr = serialNumber.toString().padStart(4, '0');
 
-  // Construct Login ID: LOI + Company + Name + Year + Serial
-  let loginId = `LOI${companyPrefix}${namePrefix}${year}${serialStr}`;
+  // Construct Login ID: Company + Name + Year + Serial (e.g., OIJODO20220001)
+  let loginId = `${companyPrefix}${namePrefix}${year}${serialStr}`;
 
   // Check if this login ID already exists (shouldn't happen, but safety check)
   let exists = await User.findOne({ loginId });
@@ -67,7 +67,7 @@ export async function generateLoginId(
   while (exists && attempts < 100) {
     serialNumber++;
     serialStr = serialNumber.toString().padStart(4, '0');
-    loginId = `LOI${companyPrefix}${namePrefix}${year}${serialStr}`;
+    loginId = `${companyPrefix}${namePrefix}${year}${serialStr}`;
     exists = await User.findOne({ loginId });
     attempts++;
   }

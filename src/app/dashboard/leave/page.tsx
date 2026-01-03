@@ -11,12 +11,21 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 // Import your custom hooks
-import { useLeave, useLeaveBalance } from '@/hooks/useLeave'; 
+import { useLeave, useLeaveBalance } from '@/hooks/useLeave';
+import { useSession } from '@/hooks/useSession';
+import { useProfile } from '@/hooks/useProfile'; 
 
 const EmployeeLeavePage = () => {
   // --- HOOKS INTEGRATION ---
   const { leaves, loading: leavesLoading, createLeave } = useLeave();
   const { balance, loading: balanceLoading } = useLeaveBalance();
+  const { user } = useSession();
+  const { profile } = useProfile();
+  
+  // Get employee name
+  const employeeName = profile?.firstName && profile?.lastName
+    ? `${profile.firstName} ${profile.lastName}`
+    : user?.name || 'Employee';
 
   // --- STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -138,16 +147,11 @@ const EmployeeLeavePage = () => {
            {/* Paid Time Off Card */}
            <div className="bg-slate-900 text-white p-6 rounded-2xl relative overflow-hidden shadow-lg">
               <div className="relative z-10">
-                 <h3 className="text-blue-400 font-bold text-sm uppercase tracking-wider mb-1">Paid Time Off</h3>
-                 <div className="text-3xl font-bold mb-1">
-                    {balanceLoading ? (
-                      <span className="text-sm">...</span>
-                    ) : (
-                      balance?.paid_leave || 0
-                    )} 
-                    <span className="text-lg font-normal text-slate-400"> / Days Available</span>
+                 <div className="text-sm font-medium mb-2">
+                    Paid time Off: <span className="font-bold">
+                      {balanceLoading ? '...' : (balance?.paidLeaveRemaining || balance?.paid_leave || 0)}
+                    </span> Days Available
                  </div>
-                 <p className="text-xs text-slate-500">Plan your vacation ahead.</p>
               </div>
               <div className="absolute right-0 bottom-0 p-4 opacity-10">
                  <Calendar className="h-24 w-24 text-blue-400" />
@@ -157,16 +161,11 @@ const EmployeeLeavePage = () => {
            {/* Sick Time Off Card */}
            <div className="bg-white border border-slate-200 p-6 rounded-2xl relative overflow-hidden shadow-sm">
               <div className="relative z-10">
-                 <h3 className="text-blue-600 font-bold text-sm uppercase tracking-wider mb-1">Sick Time Off</h3>
-                 <div className="text-3xl font-bold text-slate-900 mb-1">
-                    {balanceLoading ? (
-                      <span className="text-sm">...</span>
-                    ) : (
-                      balance?.sick_leave || 0
-                    )} 
-                    <span className="text-lg font-normal text-slate-400"> / Days Available</span>
+                 <div className="text-sm font-medium text-slate-900 mb-2">
+                    Sick time off: <span className="font-bold">
+                      {balanceLoading ? '...' : (balance?.sickLeaveRemaining || balance?.sick_leave || 0)}
+                    </span> Days Available
                  </div>
-                 <p className="text-xs text-slate-500">Get well soon.</p>
               </div>
               <div className="absolute right-0 bottom-0 p-4 opacity-5">
                  <AlertCircle className="h-24 w-24 text-blue-600" />
@@ -179,10 +178,10 @@ const EmployeeLeavePage = () => {
            <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
                  <tr>
+                    <th className="px-6 py-4">Name</th>
                     <th className="px-6 py-4">Start Date</th>
                     <th className="px-6 py-4">End Date</th>
-                    <th className="px-6 py-4">Days</th>
-                    <th className="px-6 py-4">Time Off Type</th>
+                    <th className="px-6 py-4">Time off Type</th>
                     <th className="px-6 py-4">Status</th>
                  </tr>
               </thead>
@@ -197,11 +196,14 @@ const EmployeeLeavePage = () => {
                  ) : leaves && leaves.length > 0 ? (
                    leaves.map((req) => (
                     <tr key={req._id || req.id} className="hover:bg-slate-50 transition-colors">
+                       <td className="px-6 py-4 font-medium text-slate-900">{employeeName}</td>
                        <td className="px-6 py-4 font-mono text-slate-600">{formatDate(req.startDate)}</td>
                        <td className="px-6 py-4 font-mono text-slate-600">{formatDate(req.endDate)}</td>
-                       <td className="px-6 py-4 font-medium text-slate-900">{req.totalDays}</td>
-                       <td className="px-6 py-4 text-blue-600 font-medium capitalize">
-                         {req.leaveType.replace('_', ' ')}
+                       <td className="px-6 py-4 text-blue-600 font-medium">
+                         {req.leaveType === 'paid_leave' ? 'Paid time Off' :
+                          req.leaveType === 'sick_leave' ? 'Sick time off' :
+                          req.leaveType === 'unpaid_leave' ? 'Unpaid Leaves' :
+                          req.leaveType.replace('_', ' ')}
                        </td>
                        <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${getStatusColor(req.status)}`}>
@@ -243,6 +245,12 @@ const EmployeeLeavePage = () => {
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
                
+               {/* Employee Name (Read Only) */}
+               <div className="grid grid-cols-3 items-center gap-4">
+                  <label className="text-sm font-medium text-slate-400">Employee</label>
+                  <div className="col-span-2 text-blue-400 font-medium">{employeeName}</div>
+               </div>
+
                {/* Time Off Type */}
                <div className="grid grid-cols-3 items-center gap-4">
                   <label className="text-sm font-medium text-slate-400">Time off Type</label>
@@ -252,9 +260,9 @@ const EmployeeLeavePage = () => {
                     onChange={handleInputChange}
                     className="col-span-2 bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   >
-                     <option value="paid_leave">Paid Time Off</option>
+                     <option value="paid_leave">Paid time off</option>
                      <option value="sick_leave">Sick Leave</option>
-                     <option value="unpaid_leave">Unpaid Leave</option>
+                     <option value="unpaid_leave">Unpaid Leaves</option>
                   </select>
                </div>
 
@@ -282,13 +290,16 @@ const EmployeeLeavePage = () => {
                   </div>
                </div>
 
-               {/* Duration (Days Calculated) */}
+               {/* Allocation (Days Calculated) */}
                <div className="grid grid-cols-3 items-center gap-4">
-                  <label className="text-sm font-medium text-slate-400">Duration</label>
+                  <label className="text-sm font-medium text-slate-400">Allocation</label>
                   <div className="col-span-2 flex items-center gap-2">
-                     <div className="bg-slate-800 border border-slate-600 text-blue-400 text-sm font-bold rounded-lg block w-24 p-2 text-center">
-                        {calculateDays()}
-                     </div>
+                     <input 
+                       type="number" 
+                       value={calculateDays().toFixed(2)}
+                       readOnly
+                       className="bg-slate-800 border border-slate-600 text-blue-400 text-sm font-bold rounded-lg block w-24 p-2 text-center"
+                     />
                      <span className="text-slate-500 text-sm">Days</span>
                   </div>
                </div>
@@ -316,7 +327,7 @@ const EmployeeLeavePage = () => {
                      <label className="flex items-center justify-center w-full p-2 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-slate-500 hover:bg-slate-800/50 transition-colors">
                         <div className="flex items-center gap-2 text-slate-400">
                            <Upload className="h-4 w-4" />
-                           <span className="text-xs">(Optional)</span>
+                           <span className="text-xs">(For sick leave certificate)</span>
                         </div>
                         <input type="file" className="hidden" />
                      </label>
