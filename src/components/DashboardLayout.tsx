@@ -1,11 +1,37 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users } from 'lucide-react';
+import { useSession } from '@/hooks/useSession';
+import toast from 'react-hot-toast';
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, role, isLoading } = useSession();
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false });
+      toast.success('Logged out successfully');
+      router.push('/auth/login');
+    } catch (error) {
+      toast.error('Failed to logout');
+    }
+  };
+
+  // Show loading state while checking session
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-500">Loading...</div>
+      </div>
+    );
+  }
+
+  const isAdmin = role === 'admin' || role === 'hr_officer';
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -13,7 +39,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Leave Requests', href: '/dashboard/leave', icon: Calendar },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
     { name: 'Payroll', href: '/dashboard/payroll', icon: User },
-
+    // Admin only items
+    ...(isAdmin ? [
+      { name: 'Create Employee', href: '/dashboard/employees/create', icon: Users },
+    ] : []),
   ];
 
   return (
@@ -48,7 +77,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+          >
             <LogOut className="h-5 w-5" />
             <span className="font-medium">Sign Out</span>
           </button>
@@ -64,7 +96,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center gap-4">
              {/* Mobile Menu Trigger could go here */}
             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-              JD
+              {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
             </div>
           </div>
         </header>

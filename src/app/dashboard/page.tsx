@@ -1,17 +1,43 @@
+'use client';
+
 import React from 'react';
-import { Clock, CalendarCheck, ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
+import { Clock, CalendarCheck, ArrowUpRight, UserPlus, Users } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useSession } from '@/hooks/useSession';
 
 const Dashboard = () => {
+  const { user, role } = useSession();
+  const isAdmin = role === 'admin' || role === 'hr_officer';
+  const userName = user?.name || user?.email?.split('@')[0] || 'User';
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Welcome Section */}
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Good Morning, John! 👋</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Good Morning, {userName}! 👋</h2>
           <p className="text-slate-500 mt-1">Here is what is happening with you today.</p>
         </div>
+
+        {/* Admin Quick Actions */}
+        {isAdmin && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">Admin Actions</h3>
+                <p className="text-sm text-slate-600">Manage employees and system settings</p>
+              </div>
+              <Link href="/dashboard/employees/create">
+                <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                  <UserPlus className="h-5 w-5" />
+                  Create Employee
+                </button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats / Action Cards */}
         <div className="grid md:grid-cols-3 gap-6">

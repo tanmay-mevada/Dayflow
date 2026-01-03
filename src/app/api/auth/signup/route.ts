@@ -4,14 +4,33 @@ import connectDB from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendOtpEmail } from '@/utils/sendOtpEmail';
 
+// Generate unique employee ID
+function generateEmployeeId(): string {
+  const prefix = 'EMP';
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}-${randomNum}`;
+}
+
 export async function POST(req: Request) {
   try {
     await connectDB();
-    const { email, password } = await req.json();
+    const { email, password, firstName, lastName, role } = await req.json();
+
+    if (!email || !password || !firstName || !lastName) {
+      return NextResponse.json({ error: 'Email, password, first name, and last name are required' }, { status: 400 });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return NextResponse.json({ error: 'User already exists' }, { status: 400 });
+    }
+
+    // Generate unique employee ID
+    let employeeId = generateEmployeeId();
+    let exists = await User.findOne({ employeeId });
+    while (exists) {
+      employeeId = generateEmployeeId();
+      exists = await User.findOne({ employeeId });
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -21,7 +40,10 @@ export async function POST(req: Request) {
     const newUser = await User.create({
       email,
       password: hashedPassword,
-      role: 'student',
+      firstName,
+      lastName,
+      employeeId,
+      role: role || 'employee',
       otp,
       otpExpires,
       isVerified: false,
@@ -29,7 +51,7 @@ export async function POST(req: Request) {
 
     await sendOtpEmail(email, otp);
 
-    return NextResponse.json({ message: 'OTP sent to email' });
+    return NextResponse.json({ message: 'OTP sent to email', employeeId });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

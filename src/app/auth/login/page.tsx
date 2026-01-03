@@ -23,7 +23,7 @@ export default function LoginPage() {
       toast.error('Invalid email or password');
     } else {
       toast.success('Login successful!');
-      window.location.href = '/';
+      window.location.href = '/dashboard';
     }
   }
 
@@ -69,13 +69,13 @@ export default function LoginPage() {
           </h1>
 
           <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
-            {/* Email */}
+            {/* Login ID/Email */}
             <div className="relative">
             <input
-              type="email"
+              type="text"
               id="email"
               className="w-full px-4 py-3 text-sm sm:text-base border rounded-lg bg-slate-50 text-slate-900 border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 peer placeholder-transparent"
-              placeholder="Email"
+              placeholder="Login ID/Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               onFocus={() => setFocused({ ...focused, email: true })}
@@ -90,7 +90,7 @@ export default function LoginPage() {
                     : 'top-3 text-sm text-slate-500'
                   }`}
               >
-                Email
+                Login ID/Email
               </label>
             </div>
 

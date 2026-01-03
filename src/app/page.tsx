@@ -1,5 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { 
   Users, 
   CalendarCheck, 
@@ -11,7 +14,14 @@ import {
 } from 'lucide-react';
 
 //homepage component
-const HomePage = () => {
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  
+  // Redirect logged-in users to dashboard
+  if (session) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-800 font-sans">
       {/* --- Navigation  --- */}
@@ -61,9 +71,11 @@ const HomePage = () => {
             to attendance tracking and payroll visibility.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-3.5 rounded-xl font-medium hover:bg-slate-800 transition-all">
-              Start for Free <ArrowRight className="h-4 w-4" />
-            </button>
+            <Link href="/auth/signup">
+              <button className="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-3.5 rounded-xl font-medium hover:bg-slate-800 transition-all">
+                Start for Free <ArrowRight className="h-4 w-4" />
+              </button>
+            </Link>
             <button className="px-8 py-3.5 rounded-xl font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all">
               View Documentation
             </button>
@@ -188,6 +200,4 @@ const HomePage = () => {
       </footer>
     </div>
   );
-};
-
-export default HomePage;
+}
