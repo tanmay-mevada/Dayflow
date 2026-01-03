@@ -77,6 +77,13 @@ export const leaveApi = {
     const query = employeeId ? `?employeeId=${employeeId}` : '';
     return apiRequest<{ leaveBalance: any }>(`/leave/balance${query}`);
   },
+  
+  getAllRecords: (params?: { status?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    const query = queryParams.toString();
+    return apiRequest<{ leaves: any[] }>(`/leave/admin${query ? `?${query}` : ''}`);
+  },
 };
 
 // Salary APIs

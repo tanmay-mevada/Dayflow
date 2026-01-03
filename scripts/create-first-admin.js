@@ -69,7 +69,7 @@ async function generateLoginId(companyName, firstName, lastName, dateOfJoining) 
   }
 
   const serialStr = serialNumber.toString().padStart(4, '0');
-  return `LOI${companyPrefix}${namePrefix}${year}${serialStr}`;
+  return `${companyPrefix}${namePrefix}${year}${serialStr}`;
 }
 
 async function createFirstAdmin() {
