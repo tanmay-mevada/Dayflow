@@ -1,18 +1,9 @@
 "use client";
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { 
-  LayoutDashboard, 
-  Clock, 
-  Calendar, 
-  User, 
-  LogOut, 
-  Users, 
-  BarChart3,
-  Banknote
-} from 'lucide-react';
+import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users, ChevronDown } from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import toast from 'react-hot-toast';
 
@@ -20,6 +11,25 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, isLoading } = useSession();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   const handleLogout = async () => {
     try {
@@ -29,6 +39,11 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       toast.error('Failed to logout');
     }
+  };
+
+  const handleMyProfile = () => {
+    setShowDropdown(false);
+    router.push('/dashboard/profile');
   };
 
   // Show loading state while checking session
@@ -113,8 +128,36 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           </h1>
           <div className="flex items-center gap-4">
              {/* Mobile Menu Trigger could go here */}
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-              {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                  {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-600 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                  <button
+                    onClick={handleMyProfile}
+                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4" />
+                    My Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Log Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>

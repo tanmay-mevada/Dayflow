@@ -1,186 +1,342 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
+  Clock, 
+  CalendarDays, 
   ChevronLeft, 
   ChevronRight, 
-  Calendar, 
-  Clock,
-  Briefcase,
-  AlertCircle
+  Search, 
+  Filter
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAttendance } from '@/hooks/useAttendance';
+import { useSession } from '@/hooks/useSession';
+import toast from 'react-hot-toast';
 
-const EmployeeAttendancePage = () => {
-  // --- STATE ---
-  const [currentMonth, setCurrentMonth] = useState(new Date('2025-10-01'));
+const AttendancePage = () => {
+  const { role } = useSession();
+  const isAdmin = role === 'admin' || role === 'hr_officer';
+  
+  // Date filtering
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewType, setViewType] = useState<'daily' | 'weekly'>('daily');
+  
+  // Calculate date range based on view type
+  const dateRange = useMemo(() => {
+    if (viewType === 'weekly') {
+      const start = new Date(selectedDate);
+      start.setDate(start.getDate() - start.getDay()); // Start of week (Sunday)
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6); // End of week (Saturday)
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0]
+      };
+    } else {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      return { startDate: dateStr, endDate: dateStr };
+    }
+  }, [viewType, selectedDate]);
+  const { attendance, loading, checkIn, checkOut, refetch } = useAttendance(
+    undefined,
+    dateRange.startDate,
+    dateRange.endDate
+  );
 
-  // --- MOCK DATA: Personal Attendance Log ---
-  const myAttendance = [
-    { date: '28/10/2025', checkIn: '10:00', checkOut: '19:00', status: 'Present' },
-    { date: '29/10/2025', checkIn: '10:00', checkOut: '19:00', status: 'Present' },
-    { date: '30/10/2025', checkIn: '10:15', checkOut: '19:30', status: 'Late' },
-    { date: '31/10/2025', checkIn: '09:00', checkOut: '17:00', status: 'Half-Day' },
-  ];
+  // Get today's attendance status
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayAttendance = attendance.find(record => {
+    const recordDate = new Date(record.date);
+    recordDate.setHours(0, 0, 0, 0);
+    return recordDate.getTime() === today.getTime();
+  });
 
-  // --- STATS DATA (Calculated from Month) ---
-  const stats = {
-    presentDays: 22,
-    leavesTaken: 2,
-    totalWorkingDays: 24
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleCheckIn = async () => {
+    setIsCheckingIn(true);
+    try {
+      await checkIn();
+      await refetch();
+    } catch (error) {
+      // Error is already handled in the hook
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
-  // --- HELPER: Logic to calculate hours & overtime ---
-  const calculateDailyHours = (checkIn: string, checkOut: string) => {
-    // Basic parser for "HH:MM" format
-    const [inH, inM] = checkIn.split(':').map(Number);
-    const [outH, outM] = checkOut.split(':').map(Number);
-    
-    // Calculate difference in minutes
-    let diffMins = (outH * 60 + outM) - (inH * 60 + inM);
-    
-    // Deduct standard 1-hour break (60 mins)
-    const breakMins = 60;
-    const workMins = Math.max(0, diffMins - breakMins);
-    
-    // Standard shift is 8 hours (480 mins)
-    const standardShiftMins = 480;
-    const extraMins = Math.max(0, workMins - standardShiftMins);
-
-    const format = (m: number) => {
-       const h = Math.floor(m / 60).toString().padStart(2, '0');
-       const min = (m % 60).toString().padStart(2, '0');
-       return `${h}:${min}`;
-    };
-
-    return {
-      work: format(workMins),
-      extra: format(extraMins)
-    };
+  const handleCheckOut = async () => {
+    setIsCheckingOut(true);
+    try {
+      await checkOut();
+      await refetch();
+    } catch (error) {
+      // Error is already handled in the hook
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
-  // --- HANDLERS ---
-  const handlePrevMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(currentMonth.getMonth() - 1);
-    setCurrentMonth(newDate);
+  const formatTime = (date: Date | string) => {
+    if (!date) return '-';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
   };
 
-  const handleNextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(currentMonth.getMonth() + 1);
-    setCurrentMonth(newDate);
+  const formatDate = (date: Date | string) => {
+    if (!date) return '-';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
   };
 
-  const formatMonth = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); // e.g. "Oct 2025"
+  const formatHours = (hours: number) => {
+    if (!hours) return '0h 0m';
+    const h = Math.floor(hours);
+    const m = Math.floor((hours - h) * 60);
+    return `${h}h ${m}m`;
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'absent': return 'Absent';
+      case 'half_day': return 'Half-day';
+      case 'leave': return 'Leave';
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'present': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'absent': return 'bg-red-100 text-red-700 border-red-200';
+      case 'half_day': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'leave': return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    if (viewType === 'weekly') {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    } else {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    }
+    setSelectedDate(newDate);
+  };
+
+  const canCheckIn = !todayAttendance?.checkInTime;
+  const canCheckOut = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
+  const isCheckedIn = !!todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
+
+  // For employee view
+  if (!isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header with Check-in/Check-out Button */}
+          <div className="relative flex flex-col items-center justify-between gap-6 p-8 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200 md:flex-row">
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-slate-900">My Attendance</h2>
+              <p className="mt-1 text-slate-500">Track your daily check-ins and work hours.</p>
+              <div className="flex items-center gap-2 mt-4 text-sm text-slate-500">
+                <Clock className="w-4 h-4" />
+                <span>Current Time: {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+              </div>
+            </div>
+            <div className="relative z-10 flex flex-col items-center gap-4">
+              {canCheckIn ? (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={isCheckingIn}
+                  className="flex flex-col items-center justify-center w-32 h-32 text-white transition-transform rounded-full shadow-xl bg-emerald-600 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <span className="text-2xl font-bold">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {isCheckingIn ? 'Checking In...' : 'Check In'}
+                  </span>
+                </button>
+              ) : canCheckOut ? (
+                <button
+                  onClick={handleCheckOut}
+                  disabled={isCheckingOut}
+                  className="flex flex-col items-center justify-center w-32 h-32 text-white transition-transform bg-blue-600 rounded-full shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <span className="text-2xl font-bold">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {isCheckingOut ? 'Checking Out...' : 'Check Out'}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-32 h-32 rounded-full shadow-xl bg-slate-100 text-slate-600">
+                  <span className="text-2xl font-bold">
+                    {todayAttendance?.checkOutTime 
+                      ? formatTime(todayAttendance.checkOutTime)
+                      : formatTime(currentTime)}
+                  </span>
+                  <span className="mt-1 text-xs font-bold uppercase">
+                    {todayAttendance?.checkOutTime ? 'Checked Out' : 'Checked In'}
+                  </span>
+                </div>
+              )}
+              {todayAttendance?.checkInTime && (
+                <div className="text-sm text-center text-slate-600">
+                  <div>Checked in at: {formatTime(todayAttendance.checkInTime)}</div>
+                  {todayAttendance.checkOutTime && (
+                    <div>Checked out at: {formatTime(todayAttendance.checkOutTime)}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Date Navigation */}
+          <div className="flex items-center justify-between p-4 bg-white border shadow-sm rounded-xl border-slate-200">
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-2 transition-colors rounded-lg hover:bg-slate-100"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-600" />
+            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex p-1 bg-white border rounded-lg border-slate-200">
+                <button
+                  onClick={() => setViewType('daily')}
+                  className={`px-3 py-1 text-xs font-medium rounded ${
+                    viewType === 'daily' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setViewType('weekly')}
+                  className={`px-3 py-1 text-xs font-medium rounded ${
+                    viewType === 'weekly' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
+                  }`}
+                >
+                  Weekly
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-slate-700">
+                <CalendarDays className="w-4 h-4" />
+                <span className="font-medium">
+                  {viewType === 'weekly'
+                    ? `${formatDate(dateRange.startDate)} - ${formatDate(dateRange.endDate)}`
+                    : formatDate(selectedDate)}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigateDate('next')}
+              disabled={viewType === 'daily' && selectedDate.toDateString() >= new Date().toDateString()}
+              className="p-2 transition-colors rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-5 h-5 text-slate-600" />
+            </button>
+          </div>
+
+          {/* Attendance Table */}
+          <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+            <div className="p-4 border-b border-slate-100 bg-slate-50">
+              <h3 className="font-semibold text-slate-700">Attendance Log</h3>
+            </div>
+            {loading ? (
+              <div className="p-12 text-center text-slate-500">Loading attendance records...</div>
+            ) : attendance.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">No attendance records found for this period.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="border-b bg-slate-50 text-slate-500 border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4">Check In</th>
+                      <th className="px-6 py-4">Check Out</th>
+                      <th className="px-6 py-4">Work Hours</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {attendance.map((record, index) => {
+                      const recordDate = new Date(record.date);
+                      recordDate.setHours(0, 0, 0, 0);
+                      const isToday = recordDate.getTime() === today.getTime();
+                      return (
+                        <tr
+                          key={record._id || index}
+                          className={`hover:bg-slate-50 ${isToday ? 'bg-blue-50' : ''}`}
+                        >
+                          <td className="px-6 py-4 font-medium text-slate-900">
+                            {formatDate(record.date)}
+                            {isToday && <span className="ml-2 text-xs text-blue-600">(Today)</span>}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-600">
+                            {formatTime(record.checkInTime)}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-600">
+                            {formatTime(record.checkOutTime)}
+                          </td>
+                          <td className="px-6 py-4 text-slate-600">
+                            {formatHours(record.totalHours || 0)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                                record.status
+                              )}`}
+                            >
+                              {getStatusLabel(record.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Admin view - simplified for now (can be enhanced later)
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto space-y-8">
-        
-        {/* --- Header --- */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
-          <p className="text-slate-500 mt-1">View your daily logs and work hour summary.</p>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="p-8 bg-white border shadow-sm rounded-2xl border-slate-200">
+          <h2 className="mb-2 text-2xl font-bold text-slate-900">Employee Attendance</h2>
+          <p className="text-slate-500">
+            Admin attendance view - This view can be enhanced to show all employees' attendance.
+            For now, you can view individual employee attendance by using the employee view.
+          </p>
         </div>
-
-        {/* --- 1. Top Controls & Stats Bar --- */}
-        <div className="bg-slate-900 text-white p-4 rounded-xl shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
-           
-           {/* Navigation Group */}
-           <div className="flex items-center gap-2">
-              <div className="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
-                 <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-700 rounded-md transition-colors text-slate-400 hover:text-white">
-                    <ChevronLeft className="h-5 w-5" />
-                 </button>
-                 <button onClick={handleNextMonth} className="p-2 hover:bg-slate-700 rounded-md transition-colors text-slate-400 hover:text-white">
-                    <ChevronRight className="h-5 w-5" />
-                 </button>
-              </div>
-              
-              {/* Month Display Box */}
-              <div className="bg-slate-800 border border-slate-700 px-6 py-2 rounded-lg font-mono font-bold flex items-center gap-2 min-w-[140px] justify-center">
-                 <Calendar className="h-4 w-4 text-slate-500" />
-                 {formatMonth(currentMonth)}
-              </div>
-           </div>
-
-           {/* Stats Cards (Wireframe Style) */}
-           <div className="flex flex-wrap gap-2 w-full md:w-auto">
-              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
-                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Count of days present</div>
-                 <div className="text-xl font-bold text-emerald-400">{stats.presentDays}</div>
-              </div>
-              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
-                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Leaves count</div>
-                 <div className="text-xl font-bold text-amber-400">{stats.leavesTaken}</div>
-              </div>
-              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
-                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Total working days</div>
-                 <div className="text-xl font-bold text-blue-400">{stats.totalWorkingDays}</div>
-              </div>
-           </div>
-
-        </div>
-
-        {/* --- 2. Attendance Table --- */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-           
-           {/* Table Header Date Display */}
-           <div className="p-4 bg-slate-50 border-b border-slate-100 font-medium text-slate-700 flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> 
-              Showing logs for {formatMonth(currentMonth)}
-           </div>
-
-           <table className="w-full text-sm text-left">
-              <thead className="bg-slate-900 text-white font-medium">
-                 <tr>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Check In</th>
-                    <th className="px-6 py-4">Check Out</th>
-                    <th className="px-6 py-4">Work Hours</th>
-                    <th className="px-6 py-4">Extra Hours</th>
-                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600 bg-slate-900/95">
-                 {myAttendance.map((record, index) => {
-                    const hours = calculateDailyHours(record.checkIn, record.checkOut);
-                    
-                    return (
-                       <tr key={index} className="hover:bg-slate-800 transition-colors border-b border-slate-800">
-                          <td className="px-6 py-4 font-mono text-slate-300">{record.date}</td>
-                          <td className="px-6 py-4 font-mono text-slate-400">{record.checkIn}</td>
-                          <td className="px-6 py-4 font-mono text-slate-400">{record.checkOut}</td>
-                          <td className="px-6 py-4">
-                             <span className="font-bold text-slate-200">{hours.work}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                             {/* Highlight Extra Hours if > 00:00 */}
-                             <span className={`font-mono font-medium ${hours.extra !== '00:00' ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                {hours.extra}
-                             </span>
-                          </td>
-                       </tr>
-                    );
-                 })}
-              </tbody>
-           </table>
-           
-           {/* Empty State / Footer */}
-           {myAttendance.length > 0 ? (
-             <div className="p-4 bg-slate-900 border-t border-slate-800 text-xs text-slate-500 flex items-center gap-2">
-                <AlertCircle className="h-3 w-3" />
-                <span>Work hours are calculated excluding 1 hour break. Extra hours start after 8 hours of work.</span>
-             </div>
-           ) : (
-             <div className="p-12 text-center text-slate-500 bg-slate-900">
-                No attendance records found for this month.
-             </div>
-           )}
-        </div>
-
       </div>
     </DashboardLayout>
   );
