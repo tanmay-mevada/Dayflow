@@ -1,59 +1,43 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
-  Search, 
   ChevronLeft, 
   ChevronRight, 
-  Calendar
+  Calendar, 
+  Clock,
+  Briefcase,
+  AlertCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
-import toast from 'react-hot-toast';
 
-const AdminAttendancePage = () => {
+const EmployeeAttendancePage = () => {
   // --- STATE ---
-  const [currentDate, setCurrentDate] = useState(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [attendanceData, setAttendanceData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date('2025-10-01'));
 
-  // Fetch attendance data for the selected date
-  useEffect(() => {
-    const fetchAttendance = async () => {
-      try {
-        setLoading(true);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const res = await fetch(`/api/attendance/admin?date=${dateStr}`);
-        const data = await res.json();
-        if (res.ok) {
-          setAttendanceData(data.data || []);
-        } else {
-          toast.error(data.error || 'Failed to fetch attendance');
-          setAttendanceData([]);
-        }
-      } catch (error) {
-        toast.error('Failed to fetch attendance');
-        setAttendanceData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAttendance();
-  }, [currentDate]);
+  // --- MOCK DATA: Personal Attendance Log ---
+  const myAttendance = [
+    { date: '28/10/2025', checkIn: '10:00', checkOut: '19:00', status: 'Present' },
+    { date: '29/10/2025', checkIn: '10:00', checkOut: '19:00', status: 'Present' },
+    { date: '30/10/2025', checkIn: '10:15', checkOut: '19:30', status: 'Late' },
+    { date: '31/10/2025', checkIn: '09:00', checkOut: '17:00', status: 'Half-Day' },
+  ];
 
-  // --- HELPER: Hours Calculation (matching wireframe: 1hr break, 8hr standard shift) ---
-  const calculateHours = (checkInTime: Date | string | null, checkOutTime: Date | string | null) => {
-    if (!checkInTime || !checkOutTime) return { work: '00:00', extra: '00:00' };
-    
-    const checkIn = typeof checkInTime === 'string' ? new Date(checkInTime) : checkInTime;
-    const checkOut = typeof checkOutTime === 'string' ? new Date(checkOutTime) : checkOutTime;
+  // --- STATS DATA (Calculated from Month) ---
+  const stats = {
+    presentDays: 22,
+    leavesTaken: 2,
+    totalWorkingDays: 24
+  };
+
+  // --- HELPER: Logic to calculate hours & overtime ---
+  const calculateDailyHours = (checkIn: string, checkOut: string) => {
+    // Basic parser for "HH:MM" format
+    const [inH, inM] = checkIn.split(':').map(Number);
+    const [outH, outM] = checkOut.split(':').map(Number);
     
     // Calculate difference in minutes
-    const diffMins = Math.floor((checkOut.getTime() - checkIn.getTime()) / (1000 * 60));
+    let diffMins = (outH * 60 + outM) - (inH * 60 + inM);
     
     // Deduct standard 1-hour break (60 mins)
     const breakMins = 60;
@@ -62,191 +46,139 @@ const AdminAttendancePage = () => {
     // Standard shift is 8 hours (480 mins)
     const standardShiftMins = 480;
     const extraMins = Math.max(0, workMins - standardShiftMins);
-    
+
     const format = (m: number) => {
-      const h = Math.floor(m / 60).toString().padStart(2, '0');
-      const min = (m % 60).toString().padStart(2, '0');
-      return `${h}:${min}`;
+       const h = Math.floor(m / 60).toString().padStart(2, '0');
+       const min = (m % 60).toString().padStart(2, '0');
+       return `${h}:${min}`;
     };
-    
-    return { work: format(workMins), extra: format(extraMins) };
+
+    return {
+      work: format(workMins),
+      extra: format(extraMins)
+    };
   };
 
-  // Format time to HH:MM
-  const formatTime = (date: Date | string | null) => {
-    if (!date) return '--:--';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+  // --- HANDLERS ---
+  const handlePrevMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(currentMonth.getMonth() - 1);
+    setCurrentMonth(newDate);
   };
 
-  // Get profile image
-  const getProfileImage = (employee: any) => {
-    if (employee.profilePicture) return employee.profilePicture;
-    const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+  const handleNextMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(currentMonth.getMonth() + 1);
+    setCurrentMonth(newDate);
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const formatMonth = (date: Date) => {
+    return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); // e.g. "Oct 2025"
   };
-
-  // Date navigation handlers
-  const handlePrevDate = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 1);
-    setCurrentDate(newDate);
-  };
-
-  const handleNextDate = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 1);
-    setCurrentDate(newDate);
-  };
-
-  // Filter data based on search query
-  const filteredData = useMemo(() => {
-    if (!searchQuery) return attendanceData;
-    const query = searchQuery.toLowerCase();
-    return attendanceData.filter(item => {
-      const name = `${item.employee.firstName || ''} ${item.employee.lastName || ''}`.toLowerCase();
-      const employeeId = (item.employee.employeeId || '').toLowerCase();
-      const designation = (item.employee.designation || '').toLowerCase();
-      return name.includes(query) || employeeId.includes(query) || designation.includes(query);
-    });
-  }, [attendanceData, searchQuery]);
-
-  // Calculate stats
-  const stats = useMemo(() => {
-    let present = 0;
-    let absent = 0;
-    filteredData.forEach(item => {
-      if (item.attendance && item.attendance.checkInTime && item.attendance.checkOutTime) {
-        present++;
-      } else {
-        absent++;
-      }
-    });
-    return { present, absent };
-  }, [filteredData]);
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-8">
         
         {/* --- Header --- */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Attendance</h1>
+          <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
+          <p className="mt-1 text-slate-500">View your daily logs and work hour summary.</p>
         </div>
 
-        {/* --- Controls: Search & Date Navigation --- */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          {/* Search Bar */}
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search employees..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Date Navigation */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-900 text-white rounded-lg p-1 border border-slate-700">
-              <button 
-                onClick={handlePrevDate}
-                className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <div className="px-4 py-2 font-mono font-medium min-w-[200px] text-center flex items-center justify-center gap-2">
-                <Calendar className="h-4 w-4 text-slate-400" />
-                {formatDate(currentDate)}
+        {/* --- 1. Top Controls & Stats Bar --- */}
+        <div className="flex flex-col items-center justify-between gap-4 p-4 text-white shadow-lg bg-slate-900 rounded-xl md:flex-row">
+           
+           {/* Navigation Group */}
+           <div className="flex items-center gap-2">
+              <div className="flex items-center p-1 border rounded-lg bg-slate-800 border-slate-700">
+                 <button onClick={handlePrevMonth} className="p-2 transition-colors rounded-md hover:bg-slate-700 text-slate-400 hover:text-white">
+                    <ChevronLeft className="w-5 h-5" />
+                 </button>
+                 <button onClick={handleNextMonth} className="p-2 transition-colors rounded-md hover:bg-slate-700 text-slate-400 hover:text-white">
+                    <ChevronRight className="w-5 h-5" />
+                 </button>
               </div>
-              <button 
-                onClick={handleNextDate}
-                className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+              
+              {/* Month Display Box */}
+              <div className="bg-slate-800 border border-slate-700 px-6 py-2 rounded-lg font-mono font-bold flex items-center gap-2 min-w-[140px] justify-center">
+                 <Calendar className="w-4 h-4 text-slate-500" />
+                 {formatMonth(currentMonth)}
+              </div>
+           </div>
+
+           {/* Stats Cards (Wireframe Style) */}
+           <div className="flex flex-wrap w-full gap-2 md:w-auto">
+              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
+                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Count of days present</div>
+                 <div className="text-xl font-bold text-emerald-400">{stats.presentDays}</div>
+              </div>
+              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
+                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Leaves count</div>
+                 <div className="text-xl font-bold text-amber-400">{stats.leavesTaken}</div>
+              </div>
+              <div className="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-center min-w-[120px]">
+                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Total working days</div>
+                 <div className="text-xl font-bold text-blue-400">{stats.totalWorkingDays}</div>
+              </div>
+           </div>
+
         </div>
 
-        {/* --- Attendance Table --- */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="p-12 text-center text-slate-500">
-              Loading attendance data...
-            </div>
-          ) : filteredData.length === 0 ? (
-            <div className="p-12 text-center text-slate-500">
-              No attendance records found for this date.
-            </div>
-          ) : (
-            <>
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4">Emp</th>
+        {/* --- 2. Attendance Table --- */}
+        <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+           
+           {/* Table Header Date Display */}
+           <div className="flex items-center gap-2 p-4 font-medium border-b bg-slate-50 border-slate-100 text-slate-700">
+              <Calendar className="w-4 h-4" /> 
+              Showing logs for {formatMonth(currentMonth)}
+           </div>
+
+           <table className="w-full text-sm text-left">
+              <thead className="font-medium text-white bg-slate-900">
+                 <tr>
+                    <th className="px-6 py-4">Date</th>
                     <th className="px-6 py-4">Check In</th>
                     <th className="px-6 py-4">Check Out</th>
                     <th className="px-6 py-4">Work Hours</th>
-                    <th className="px-6 py-4">Extra hours</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredData.map((item, index) => {
-                    const employee = item.employee;
-                    const attendance = item.attendance;
-                    const hours = calculateHours(
-                      attendance?.checkInTime || null,
-                      attendance?.checkOutTime || null
-                    );
-                    const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
+                    <th className="px-6 py-4">Extra Hours</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-600 bg-slate-900/95">
+                 {myAttendance.map((record, index) => {
+                    const hours = calculateDailyHours(record.checkIn, record.checkOut);
                     
                     return (
-                      <tr key={employee._id || index} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={getProfileImage(employee)} 
-                              alt={fullName} 
-                              className="h-9 w-9 rounded-full bg-slate-100 object-cover" 
-                            />
-                            <div>
-                              <div className="font-semibold text-slate-900">{fullName}</div>
-                              <div className="text-xs text-slate-400">{employee.employeeId || 'N/A'}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-mono text-slate-600">
-                          {formatTime(attendance?.checkInTime || null)}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-slate-600">
-                          {formatTime(attendance?.checkOutTime || null)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-slate-700">{hours.work}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`font-mono font-medium ${
-                            hours.extra !== '00:00' ? 'text-emerald-600' : 'text-slate-500'
-                          }`}>
-                            {hours.extra}
-                          </span>
-                        </td>
-                      </tr>
+                       <tr key={index} className="transition-colors border-b hover:bg-slate-800 border-slate-800">
+                          <td className="px-6 py-4 font-mono text-slate-300">{record.date}</td>
+                          <td className="px-6 py-4 font-mono text-slate-400">{record.checkIn}</td>
+                          <td className="px-6 py-4 font-mono text-slate-400">{record.checkOut}</td>
+                          <td className="px-6 py-4">
+                             <span className="font-bold text-slate-200">{hours.work}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                             {/* Highlight Extra Hours if > 00:00 */}
+                             <span className={`font-mono font-medium ${hours.extra !== '00:00' ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                {hours.extra}
+                             </span>
+                          </td>
+                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
+                 })}
+              </tbody>
+           </table>
+           
+           {/* Empty State / Footer */}
+           {myAttendance.length > 0 ? (
+             <div className="flex items-center gap-2 p-4 text-xs border-t bg-slate-900 border-slate-800 text-slate-500">
+                <AlertCircle className="w-3 h-3" />
+                <span>Work hours are calculated excluding 1 hour break. Extra hours start after 8 hours of work.</span>
+             </div>
+           ) : (
+             <div className="p-12 text-center text-slate-500 bg-slate-900">
+                No attendance records found for this month.
+             </div>
+           )}
         </div>
 
       </div>
@@ -254,4 +186,4 @@ const AdminAttendancePage = () => {
   );
 };
 
-export default AdminAttendancePage;
+export default EmployeeAttendancePage;

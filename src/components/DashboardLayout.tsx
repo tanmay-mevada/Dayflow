@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users, ChevronDown, Banknote, BarChart3 } from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import toast from 'react-hot-toast';
 
@@ -49,7 +49,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   // Show loading state while checking session
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-slate-500">Loading...</div>
       </div>
     );
@@ -79,12 +79,12 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col fixed h-full z-10">
-        <div className="p-6 border-b border-slate-800 flex items-center gap-2">
+      <aside className="fixed z-10 flex-col hidden w-64 h-full text-white bg-slate-900 md:flex">
+        <div className="flex items-center gap-2 p-6 border-b border-slate-800">
           <div className="bg-blue-600 p-1.5 rounded-lg">
-            <Clock className="h-5 w-5 text-white" />
+            <Clock className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight">Dayflow</span>
         </div>
@@ -102,7 +102,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="w-5 h-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             );
@@ -112,18 +112,18 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="p-4 border-t border-slate-800">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+            className="flex items-center w-full gap-3 px-4 py-3 transition-colors text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="w-5 h-5" />
             <span className="font-medium">Sign Out</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-64 min-h-screen">
-        <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 sticky top-0 z-20">
-          <h1 className="text-lg font-semibold text-slate-800 capitalize">
+      <main className="flex-1 min-h-screen md:ml-64">
+        <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-8 bg-white border-b border-slate-200">
+          <h1 className="text-lg font-semibold capitalize text-slate-800">
             {pathname.split('/').pop() || 'Dashboard'}
           </h1>
           <div className="flex items-center gap-4">
@@ -131,9 +131,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2 transition-opacity hover:opacity-80"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                <div className="flex items-center justify-center w-8 h-8 text-sm font-bold text-blue-700 bg-blue-100 rounded-full">
                   {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 <ChevronDown className={`h-4 w-4 text-slate-600 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
@@ -141,19 +141,19 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               
               {/* Dropdown Menu */}
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                <div className="absolute right-0 z-50 w-48 py-1 mt-2 bg-white border rounded-lg shadow-lg border-slate-200">
                   <button
                     onClick={handleMyProfile}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"
                   >
-                    <User className="h-4 w-4" />
+                    <User className="w-4 h-4" />
                     My Profile
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50 flex items-center gap-2"
+                    className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-red-600 hover:bg-slate-50"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="w-4 h-4" />
                     Log Out
                   </button>
                 </div>

@@ -195,7 +195,7 @@ const ProfilePage = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto pb-10">
+      <div className="max-w-5xl pb-10 mx-auto text-black">
         
         {/* Hidden File Input */}
         <input 
@@ -207,7 +207,7 @@ const ProfilePage = () => {
         />
 
         {/* Header & Controls */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 mb-8 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Profile</h1>
             <p className="text-slate-500">Manage your personal information and view job details.</p>
@@ -218,51 +218,51 @@ const ProfilePage = () => {
               <button 
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-slate-600 border-slate-200 hover:bg-slate-50 disabled:opacity-50"
               >
-                <X className="h-4 w-4" /> Cancel
+                <X className="w-4 h-4" /> Cancel
               </button>
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 disabled:opacity-50"
               >
-                <Save className="h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
+                <Save className="w-4 h-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           ) : (
             <button 
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-4 py-2 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm text-slate-700 border-slate-200 hover:bg-slate-50"
             >
-              <Pencil className="h-4 w-4" /> Edit Profile
+              <Pencil className="w-4 h-4" /> Edit Profile
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           
           {/* LEFT COLUMN: Identity Card */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center relative overflow-hidden">
+          <div className="space-y-6 lg:col-span-1">
+            <div className="relative p-6 overflow-hidden text-center bg-white border shadow-sm rounded-2xl border-slate-200">
               <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-600 to-blue-400"></div>
               
               {/* Avatar Section */}
               <div className="relative inline-block mt-8 mb-4 group">
-                <div className="relative h-32 w-32 rounded-full border-4 border-white shadow-md bg-white overflow-hidden mx-auto">
+                <div className="relative w-32 h-32 mx-auto overflow-hidden bg-white border-4 border-white rounded-full shadow-md">
                     <img 
                     src={displayImage} 
                     alt="Profile" 
-                    className="h-full w-full object-cover"
+                    className="object-cover w-full h-full"
                     />
                     
                     {/* Hover Overlay for Editing */}
                     {isEditing && (
                         <div 
                             onClick={handleImageClick}
-                            className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 cursor-pointer bg-black/40 group-hover:opacity-100"
                         >
-                            <Upload className="h-8 w-8 text-white/80" />
+                            <Upload className="w-8 h-8 text-white/80" />
                         </div>
                     )}
                 </div>
@@ -270,24 +270,24 @@ const ProfilePage = () => {
                 {isEditing && (
                   <button 
                     onClick={handleImageClick}
-                    className="absolute bottom-1 right-1 p-2 bg-slate-900 text-white rounded-full hover:bg-slate-700 transition-colors shadow-lg z-10" 
+                    className="absolute z-10 p-2 text-white transition-colors rounded-full shadow-lg bottom-1 right-1 bg-slate-900 hover:bg-slate-700" 
                     title="Change Picture"
                   >
-                    <Camera className="h-4 w-4" />
+                    <Camera className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
               <h2 className="text-xl font-bold text-slate-900">{fullName}</h2>
-              <p className="text-slate-500 text-sm mb-4">{profile.designation || 'Employee'}</p>
+              <p className="mb-4 text-sm text-slate-500">{profile.designation || 'Employee'}</p>
               
-              <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 py-2 rounded-lg border border-slate-100">
+              <div className="flex items-center justify-center gap-2 py-2 text-xs font-medium border rounded-lg text-slate-600 bg-slate-50 border-slate-100">
                 <span>Employee ID:</span>
                 <span className="font-mono text-slate-900">{profile.loginId}</span>
               </div>
 
                 {isEditing && (
-                    <p className="text-xs text-slate-400 mt-4">
+                    <p className="mt-4 text-xs text-slate-400">
                         Allowed: JPG, PNG, WebP (Max 2MB)
                     </p>
                 )}
@@ -295,17 +295,17 @@ const ProfilePage = () => {
           </div>
 
           {/* RIGHT COLUMN: Details Form */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="space-y-8 lg:col-span-2">
             
             {/* 1. Personal Details Section */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <User className="h-5 w-5 text-blue-600" /> Personal Details
+            <div className="p-8 bg-white border shadow-sm rounded-2xl border-slate-200">
+              <h3 className="flex items-center gap-2 mb-6 text-lg font-bold text-slate-900">
+                <User className="w-5 h-5 text-blue-600" /> Personal Details
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                  <label className="block mb-2 text-sm font-medium text-slate-700">Full Name</label>
                   <input 
                     disabled 
                     type="text" 
@@ -314,7 +314,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                  <label className="block mb-2 text-sm font-medium text-slate-700">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <input 
@@ -328,7 +328,7 @@ const ProfilePage = () => {
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -352,7 +352,7 @@ const ProfilePage = () => {
 
                 {/* Date of Birth */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -376,7 +376,7 @@ const ProfilePage = () => {
 
                 {/* Gender */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Gender <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -403,7 +403,7 @@ const ProfilePage = () => {
 
                 {/* Marital Status */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Marital Status <span className="text-red-500">*</span>
                   </label>
                   <select 
@@ -428,7 +428,7 @@ const ProfilePage = () => {
 
                 {/* Nationality */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Nationality <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -452,7 +452,7 @@ const ProfilePage = () => {
 
                 {/* Address */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">
                     Current Address <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -477,34 +477,34 @@ const ProfilePage = () => {
             </div>
 
             {/* 2. Job Details Section (Read Only) */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-purple-600" /> Job Information
+            <div className="p-8 bg-white border shadow-sm rounded-2xl border-slate-200">
+              <h3 className="flex items-center gap-2 mb-6 text-lg font-bold text-slate-900">
+                <Briefcase className="w-5 h-5 text-purple-600" /> Job Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Department</label>
-                  <div className="text-slate-900 font-medium">{profile.department || 'Not assigned'}</div>
+                  <label className="block mb-1 text-xs font-medium tracking-wider uppercase text-slate-400">Department</label>
+                  <div className="font-medium text-slate-900">{profile.department || 'Not assigned'}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Manager</label>
+                  <label className="block mb-1 text-xs font-medium tracking-wider uppercase text-slate-400">Manager</label>
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600">
+                    <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-purple-600 bg-purple-100 rounded-full">
                       {managerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
-                    <span className="text-slate-900 font-medium">{managerName}</span>
+                    <span className="font-medium text-slate-900">{managerName}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Date of Joining</label>
-                  <div className="text-slate-900 font-medium">
+                  <label className="block mb-1 text-xs font-medium tracking-wider uppercase text-slate-400">Date of Joining</label>
+                  <div className="font-medium text-slate-900">
                     {profile.dateOfJoining 
                       ? new Date(profile.dateOfJoining).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                       : 'Not available'}
                   </div>
                 </div>
                 <div>
-                   <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Employment Status</label>
+                   <label className="block mb-1 text-xs font-medium tracking-wider uppercase text-slate-400">Employment Status</label>
                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
                      profile.employmentStatus === 'active' 
                        ? 'bg-emerald-100 text-emerald-700'
