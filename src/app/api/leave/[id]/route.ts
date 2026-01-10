@@ -5,10 +5,16 @@ import { Leave } from '@/models/leave';
 import { LeaveBalance } from '@/models/leaveBalance';
 
 // PUT - Approve/Reject leave (Admin/HR only)
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     await connectDB();
     const user = await getCurrentUser();
+
+    // Await params for Next.js 15+
+    const { id } = await context.params;
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,7 +31,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: 'Valid status (approved/rejected) is required' }, { status: 400 });
     }
 
-    const leave = await Leave.findById(params.id);
+    const leave = await Leave.findById(id);
     if (!leave) {
       return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
     }
@@ -67,16 +73,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE - Cancel leave request (Employee only)
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     await connectDB();
     const user = await getCurrentUser();
+
+    // Await params for Next.js 15+
+    const { id } = await context.params;
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const leave = await Leave.findById(params.id);
+    const leave = await Leave.findById(id);
     if (!leave) {
       return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
     }
@@ -90,7 +102,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ error: 'Only pending leave requests can be cancelled' }, { status: 400 });
     }
 
-    await Leave.findByIdAndDelete(params.id);
+    await Leave.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Leave request cancelled successfully' });
   } catch (err) {
