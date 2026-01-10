@@ -11,7 +11,8 @@ import {
   Save, 
   X,
   CheckCircle2,
-  FileText
+  FileText,
+  BankNote
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 
@@ -71,62 +72,62 @@ const PayrollPage = () => {
             VIEW 1: EMPLOYEE (Read-Only Salary Slip) [Source: 96]
            ================================================================================= */}
         {role === 'employee' && (
-          <div className="animate-in fade-in duration-500">
+          <div className="duration-500 animate-in fade-in">
              <div className="flex items-center justify-between mb-6">
                 <div>
                    <h2 className="text-2xl font-bold text-slate-900">My Payroll</h2>
-                   <p className="text-slate-500 mt-1">View your monthly salary details and tax breakdown.</p>
+                   <p className="mt-1 text-slate-500">View your monthly salary details and tax breakdown.</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium shadow-sm">
-                   <Download className="h-4 w-4" /> Download Slip
+                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white border rounded-lg shadow-sm border-slate-200 text-slate-600 hover:bg-slate-50">
+                   <Download className="w-4 h-4" /> Download Slip
                 </button>
              </div>
 
-             <div className="grid md:grid-cols-2 gap-6">
+             <div className="grid gap-6 md:grid-cols-2">
                 
                 {/* 1. Salary Overview Card */}
-                <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
-                   <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+                <div className="relative p-8 overflow-hidden text-white shadow-xl bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl">
+                   <div className="absolute top-0 right-0 w-32 h-32 -mt-8 -mr-8 bg-white rounded-full opacity-10 blur-2xl"></div>
                    
                    <div className="flex items-center gap-3 mb-8 opacity-90">
-                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm"><CreditCard className="h-6 w-6" /></div>
+                      <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm"><CreditCard className="w-6 h-6" /></div>
                       <span className="font-medium tracking-wide">Net Pay • {myPayroll.month}</span>
                    </div>
 
-                   <div className="mb-2 text-blue-100 text-sm font-medium uppercase tracking-wider">Total Disbursed Amount</div>
-                   <div className="text-5xl font-bold mb-8">{formatCurrency(myPayroll.netSalary)}</div>
+                   <div className="mb-2 text-sm font-medium tracking-wider text-blue-100 uppercase">Total Disbursed Amount</div>
+                   <div className="mb-8 text-5xl font-bold">{formatCurrency(myPayroll.netSalary)}</div>
 
                    <div className="flex items-center gap-2 text-sm bg-blue-500/30 w-fit px-3 py-1.5 rounded-full backdrop-blur-md border border-blue-400/30">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
                       Status: {myPayroll.status}
                    </div>
                 </div>
 
                 {/* 2. Detailed Breakdown [Source: 96] */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                   <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-slate-400" /> Salary Structure
+                <div className="p-8 bg-white border shadow-sm rounded-2xl border-slate-200">
+                   <h3 className="flex items-center gap-2 mb-6 font-bold text-slate-900">
+                      <FileText className="w-5 h-5 text-slate-400" /> Salary Structure
                    </h3>
                    <div className="space-y-4">
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-50">
                          <span className="text-slate-600">Basic Salary</span>
                          <span className="font-mono font-medium text-slate-900">{formatCurrency(myPayroll.basic)}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-50">
                          <span className="text-slate-600">HRA</span>
                          <span className="font-mono font-medium text-slate-900">{formatCurrency(myPayroll.hra)}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-50">
                          <span className="text-slate-600">Special Allowances</span>
                          <span className="font-mono font-medium text-slate-900">{formatCurrency(myPayroll.allowances)}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                         <span className="text-red-500 font-medium">Deductions (Tax/PF)</span>
+                      <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                         <span className="font-medium text-red-500">Deductions (Tax/PF)</span>
                          <span className="font-mono font-medium text-red-600">- {formatCurrency(myPayroll.deductions)}</span>
                       </div>
-                      <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-100">
-                         <span className="text-slate-900 font-bold text-lg">Gross Earnings</span>
-                         <span className="font-mono font-bold text-slate-900 text-lg">{formatCurrency(myPayroll.basic + myPayroll.hra + myPayroll.allowances)}</span>
+                      <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
+                         <span className="text-lg font-bold text-slate-900">Gross Earnings</span>
+                         <span className="font-mono text-lg font-bold text-slate-900">{formatCurrency(myPayroll.basic + myPayroll.hra + myPayroll.allowances)}</span>
                       </div>
                    </div>
                 </div>
@@ -138,22 +139,22 @@ const PayrollPage = () => {
             VIEW 2: ADMIN (Payroll Control & Updates) [Source: 98, 100]
            ================================================================================= */}
         {role === 'admin' && (
-          <div className="animate-in fade-in duration-500 space-y-6">
+          <div className="space-y-6 duration-500 animate-in fade-in">
              <div className="flex items-center justify-between">
                 <div>
                    <h2 className="text-2xl font-bold text-slate-900">Payroll Management</h2>
-                   <p className="text-slate-500 mt-1">Manage employee salaries and update structures.</p>
+                   <p className="mt-1 text-slate-500">Manage employee salaries and update structures.</p>
                 </div>
                 <div className="flex gap-2">
-                   <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium shadow-sm shadow-emerald-200">
-                      <DollarSign className="h-4 w-4" /> Process Payroll
+                   <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200">
+                      <DollarSign className="w-4 h-4" /> Process Payroll
                    </button>
                 </div>
              </div>
 
-             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+             <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                 <table className="w-full text-sm text-left">
-                   <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
+                   <thead className="border-b bg-slate-50 text-slate-500 border-slate-100">
                       <tr>
                          <th className="px-6 py-4 font-medium">Employee</th>
                          <th className="px-6 py-4 font-medium">Basic Salary</th>
@@ -172,7 +173,7 @@ const PayrollPage = () => {
                             <tr key={emp.id} className={`hover:bg-slate-50 transition-colors ${isRowEditing ? 'bg-blue-50/50' : ''}`}>
                                <td className="px-6 py-4 font-medium text-slate-900">
                                   <div>{emp.name}</div>
-                                  <div className="text-xs text-slate-500 font-normal">{emp.role}</div>
+                                  <div className="text-xs font-normal text-slate-500">{emp.role}</div>
                                </td>
                                
                                {/* Editable Fields [Source: 100] */}
@@ -182,7 +183,7 @@ const PayrollPage = () => {
                                        type="number" 
                                        value={emp.basic} 
                                        onChange={(e) => handleInputChange(emp.id, 'basic', e.target.value)}
-                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
                                      />
                                   ) : (
                                      <span className="font-mono text-slate-600">{formatCurrency(emp.basic)}</span>
@@ -194,7 +195,7 @@ const PayrollPage = () => {
                                        type="number" 
                                        value={emp.hra} 
                                        onChange={(e) => handleInputChange(emp.id, 'hra', e.target.value)}
-                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
                                      />
                                   ) : (
                                      <span className="font-mono text-slate-600">{formatCurrency(emp.hra)}</span>
@@ -206,7 +207,7 @@ const PayrollPage = () => {
                                        type="number" 
                                        value={emp.allowances} 
                                        onChange={(e) => handleInputChange(emp.id, 'allowances', e.target.value)}
-                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                       className="w-24 px-2 py-1 text-sm border border-blue-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
                                      />
                                   ) : (
                                      <span className="font-mono text-slate-600">{formatCurrency(emp.allowances)}</span>
@@ -214,7 +215,7 @@ const PayrollPage = () => {
                                </td>
 
                                {/* Calculated Total */}
-                               <td className="px-6 py-4 font-bold text-slate-900 font-mono">
+                               <td className="px-6 py-4 font-mono font-bold text-slate-900">
                                   {formatCurrency(totalGross)}
                                </td>
 
@@ -222,15 +223,15 @@ const PayrollPage = () => {
                                   {isRowEditing ? (
                                      <div className="flex justify-end gap-2">
                                         <button onClick={handleSaveClick} className="p-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
-                                           <Save className="h-4 w-4" />
+                                           <Save className="w-4 h-4" />
                                         </button>
                                         <button onClick={() => setEditingId(null)} className="p-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200">
-                                           <X className="h-4 w-4" />
+                                           <X className="w-4 h-4" />
                                         </button>
                                      </div>
                                   ) : (
-                                     <button onClick={() => handleEditClick(emp.id)} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 justify-end ml-auto">
-                                        <Pencil className="h-3 w-3" /> Edit
+                                     <button onClick={() => handleEditClick(emp.id)} className="flex items-center justify-end gap-1 ml-auto text-sm font-medium text-blue-600 hover:text-blue-800">
+                                        <Pencil className="w-3 h-3" /> Edit
                                      </button>
                                   )}
                                </td>
