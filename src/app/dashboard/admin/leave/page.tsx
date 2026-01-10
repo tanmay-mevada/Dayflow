@@ -62,6 +62,8 @@ const AdminTimeOff = () => {
 
     try {
       setProcessing(true);
+      console.log('Approving leave:', selectedLeave._id); // Debug log
+      
       const res = await fetch(`/api/admin/leaves/${selectedLeave._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -69,6 +71,7 @@ const AdminTimeOff = () => {
       });
 
       const data = await res.json();
+      console.log('Approve response:', res.status, data); // Debug log
 
       if (res.ok) {
         toast.success('Leave request approved successfully');
@@ -77,9 +80,11 @@ const AdminTimeOff = () => {
         setSelectedLeave(null);
         fetchLeaves();
       } else {
+        console.error('Approve error:', data); // Debug log
         toast.error(data.error || 'Failed to approve leave');
       }
     } catch (error) {
+      console.error('Approve catch error:', error); // Debug log
       toast.error('Failed to approve leave');
     } finally {
       setProcessing(false);
@@ -96,6 +101,8 @@ const AdminTimeOff = () => {
 
     try {
       setProcessing(true);
+      console.log('Rejecting leave:', selectedLeave._id, 'Reason:', rejectionReason); // Debug log
+      
       const res = await fetch(`/api/admin/leaves/${selectedLeave._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -106,6 +113,7 @@ const AdminTimeOff = () => {
       });
 
       const data = await res.json();
+      console.log('Reject response:', res.status, data); // Debug log
 
       if (res.ok) {
         toast.success('Leave request rejected');
@@ -115,9 +123,11 @@ const AdminTimeOff = () => {
         setRejectionReason('');
         fetchLeaves();
       } else {
+        console.error('Reject error:', data); // Debug log
         toast.error(data.error || 'Failed to reject leave');
       }
     } catch (error) {
+      console.error('Reject catch error:', error); // Debug log
       toast.error('Failed to reject leave');
     } finally {
       setProcessing(false);
@@ -223,10 +233,10 @@ const AdminTimeOff = () => {
             Attendance
           </Link>
           <Link 
-            href="/dashboard/admin/timeoff" 
+            href="/dashboard/admin/leave" 
             className="pb-3 text-purple-600 border-b-2 border-purple-600 font-medium"
           >
-            Time Off
+            Leaves
           </Link>
         </div>
 

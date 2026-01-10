@@ -3,7 +3,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LayoutDashboard, Clock, Calendar, User, LogOut, Menu, Users, ChevronDown, Banknote, BarChart3 } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Clock, 
+  Calendar, 
+  User, 
+  LogOut, 
+  Menu, 
+  Users, 
+  ChevronDown, 
+  Banknote, 
+  BarChart3,
+  UserPlus,
+  ClipboardList
+} from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import toast from 'react-hot-toast';
 
@@ -57,26 +70,44 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   const isAdmin = role === 'admin' || role === 'hr_officer';
 
-  // --- NAVIGATION ITEMS ---
-  const navItems = [
+  // --- NAVIGATION ITEMS BASED ON ROLE ---
+  const employeeNavItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Clock },
     { name: 'Leave Requests', href: '/dashboard/leave', icon: Calendar },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote },
-
-    
-    // --- 2. NEW ANALYTICS OPTION ADDED HERE ---
-    ...(isAdmin ? [
-      { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    ] : []),
-    // ------------------------------------------
-
-    // Admin only items
-    ...(isAdmin ? [
-      { name: 'Create Employee', href: '/dashboard/employees/create', icon: Users },
-    ] : []),
   ];
+
+  const adminNavItems = [
+    { name: 'Employees', href: '/dashboard/admin', icon: Users },
+    { name: 'Attendance', href: '/dashboard/admin/attendance', icon: Clock },
+    { name: 'Leave Requests', href: '/dashboard/admin/leave', icon: Calendar },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Create Employee', href: '/dashboard/employees/create', icon: UserPlus },
+    { name: 'My Profile', href: '/dashboard/profile', icon: User },
+  ];
+
+  // Select navigation based on role
+  const navItems = isAdmin ? adminNavItems : employeeNavItems;
+
+  // Get page title based on pathname
+  const getPageTitle = () => {
+    if (pathname === '/dashboard/admin') return 'Employee Management';
+    if (pathname === '/dashboard/admin/attendance') return 'Attendance Management';
+    if (pathname === '/dashboard/admin/timeoff') return 'Time Off Management';
+    if (pathname === '/dashboard/admin/profile') return 'Employee Profile';
+    if (pathname === '/dashboard/analytics') return 'Analytics';
+    if (pathname === '/dashboard/employees/create') return 'Create Employee';
+    if (pathname === '/dashboard/profile') return 'My Profile';
+    if (pathname === '/dashboard/attendance') return 'My Attendance';
+    if (pathname === '/dashboard/leave') return 'My Leave Requests';
+    if (pathname === '/dashboard/payroll') return 'Payroll';
+    if (pathname === '/dashboard') return isAdmin ? 'Admin Dashboard' : 'Dashboard';
+    
+    // Fallback: capitalize last segment
+    return pathname.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Dashboard';
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -86,7 +117,12 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="bg-blue-600 p-1.5 rounded-lg">
             <Clock className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">Dayflow</span>
+          <div className="flex flex-col">
+            <span className="text-xl font-bold tracking-tight">Dayflow</span>
+            {isAdmin && (
+              <span className="text-xs text-slate-400">Admin Panel</span>
+            )}
+          </div>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
@@ -123,11 +159,25 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Main Content Area */}
       <main className="flex-1 min-h-screen md:ml-64">
         <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-8 bg-white border-b border-slate-200">
-          <h1 className="text-lg font-semibold capitalize text-slate-800">
-            {pathname.split('/').pop() || 'Dashboard'}
-          </h1>
+          <div>
+            <h1 className="text-lg font-semibold text-slate-800">
+              {getPageTitle()}
+            </h1>
+            {isAdmin && pathname === '/dashboard/admin' && (
+              <p className="text-sm text-slate-500">Manage your team members</p>
+            )}
+          </div>
           <div className="flex items-center gap-4">
-             {/* Mobile Menu Trigger could go here */}
+            {/* User Info Badge */}
+            {isAdmin && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg">
+                <span className="text-xs font-medium text-blue-700">
+                  {role === 'admin' ? 'Admin' : 'HR Officer'}
+                </span>
+              </div>
+            )}
+            
+            {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -142,6 +192,14 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               {/* Dropdown Menu */}
               {showDropdown && (
                 <div className="absolute right-0 z-50 w-48 py-1 mt-2 bg-white border rounded-lg shadow-lg border-slate-200">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-sm font-medium text-slate-900">
+                      {user?.name || 'User'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
                   <button
                     onClick={handleMyProfile}
                     className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"

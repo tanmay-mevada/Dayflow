@@ -190,10 +190,10 @@ const AdminAttendance = () => {
                   Attendance
                </Link>
                <Link
-                  href="/dashboard/admin/timeoff"
+                  href="/dashboard/admin/leave"
                   className="pb-3 text-slate-600 hover:text-purple-600 transition-colors"
                >
-                  Time Off
+                  Leaves
                </Link>
             </div>
 
