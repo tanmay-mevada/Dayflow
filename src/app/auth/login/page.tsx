@@ -47,7 +47,7 @@ export default function LoginPage() {
             </div>
             <div className="flex items-center gap-4">
               <Link href="/auth/login">
-                <button className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                <button className="text-sm  font-medium text-slate-600 hover:text-slate-900">
                   Sign In
                 </button>
               </Link>
@@ -120,7 +120,7 @@ export default function LoginPage() {
           </div>
 
           <div className="flex justify-end items-center">
-            <Link href="/auth/request-reset" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+            <Link href="/auth/request-reset" className="w-full flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors ">
               Forgot password?
             </Link>
           </div>
