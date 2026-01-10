@@ -101,16 +101,16 @@ const AdminDashboard = () => {
              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-900 rounded-t-full"></span>
            </Link>
            <Link 
-             href="/dashboard/attendance"
+             href="/dashboard/admin/attendance"
              className="pb-4 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
            >
              Attendance
            </Link>
            <Link 
-             href="/dashboard/leave"
+             href="/dashboard/admin/leave"
              className="pb-4 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
            >
-             Time Off
+             Leaves
            </Link>
         </div>
 
